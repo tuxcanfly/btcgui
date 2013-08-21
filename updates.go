@@ -90,6 +90,7 @@ var (
 		reqProgress,
 		//reqRemoteProgress,
 		reqUnconfirmed,
+		reqLockState,
 	}
 	updateFuncs = [](func()){
 		updateAddresses,
@@ -338,6 +339,32 @@ func reqUnconfirmed(ws *websocket.Conn) error {
 	replyHandlers.m[n] = func(result interface{}) {
 		if r, ok := result.(float64); ok {
 			updateChans.balance <- r
+		}
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+func reqLockState(ws *websocket.Conn) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	m := btcjson.Message{
+		Jsonrpc: "",
+		Id: n,
+		Method: "walletislocked",
+		Params: []interface{}{},
+	}
+	msg, _ := json.Marshal(&m)
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}) {
+		if r, ok := result.(bool); ok {
+			// TODO(jrick): add to statusbar?
+			fmt.Println("Wallet locked?", r)
 		}
 	}
 	replyHandlers.Unlock()

@@ -17,9 +17,9 @@
 package main
 
 import (
+	"github.com/conformal/go-flags"
 	"github.com/conformal/gotk3/gtk"
 	"log"
-	"opensource.conformal.com/go/go-flags"
 )
 
 type options struct {

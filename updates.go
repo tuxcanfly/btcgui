@@ -28,12 +28,10 @@ import (
 	"math"
 	"strconv"
 	"sync"
-	"time"
 )
 
 const (
 	blocksForConfirmation = 6
-	pollingInterval       = 10 * time.Second
 	satoshiPerBTC         = 100000000
 )
 

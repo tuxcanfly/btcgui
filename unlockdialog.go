@@ -84,7 +84,7 @@ func createUnlockDialog() *gtk.Dialog {
 	}
 	grid.Attach(lbl, 0, 2, 1, 1)
 
-	timeout, err := gtk.SpinButtonNewWithRange(0, float64(1 << 64 - 1), 1)
+	timeout, err := gtk.SpinButtonNewWithRange(0, float64(1<<64-1), 1)
 	if err != nil {
 		log.Fatal(err)
 	}

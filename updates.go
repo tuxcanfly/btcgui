@@ -531,7 +531,6 @@ func updateUnconfirmed() {
 func updateLockState() {
 	for {
 		locked, ok := <-updateChans.lockState
-		fmt.Println("here")
 		if !ok {
 			return
 		}

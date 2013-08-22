@@ -107,6 +107,7 @@ var (
 		updateAddresses,
 		updateBalance,
 		updateConnectionState,
+		updateLockState,
 		updateProgress,
 		updateUnconfirmed,
 	}
@@ -386,8 +387,7 @@ func reqLockState(ws *websocket.Conn) error {
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.(bool); ok {
-			// TODO(jrick): add to statusbar?
-			fmt.Println("Wallet locked?", r)
+			updateChans.lockState <- r
 		}
 	}
 	replyHandlers.Unlock()
@@ -525,6 +525,28 @@ func updateUnconfirmed() {
 		glib.IdleAdd(func() {
 			Overview.Unconfirmed.SetMarkup(s)
 		})
+	}
+}
+
+func updateLockState() {
+	for {
+		locked, ok := <-updateChans.lockState
+		fmt.Println("here")
+		if !ok {
+			return
+		}
+
+		if locked {
+			glib.IdleAdd(func() {
+				MenuBar.Settings.Lock.SetSensitive(false)
+				MenuBar.Settings.Unlock.SetSensitive(true)
+			})
+		} else {
+			glib.IdleAdd(func() {
+				MenuBar.Settings.Lock.SetSensitive(true)
+				MenuBar.Settings.Unlock.SetSensitive(false)
+			})
+		}
 	}
 }
 

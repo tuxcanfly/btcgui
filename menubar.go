@@ -21,6 +21,16 @@ import (
 	"log"
 )
 
+var (
+	MenuBar = struct {
+		Settings struct {
+			Encrypt *gtk.MenuItem
+			Lock    *gtk.MenuItem
+			Unlock  *gtk.MenuItem
+		}
+	}{}
+)
+
 func createFileMenu() *gtk.MenuItem {
 	menu, err := gtk.MenuItemNewWithMnemonic("_File")
 	if err != nil {
@@ -67,6 +77,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		dialog.Run()
 	})
 	dropdown.Append(mitem)
+	MenuBar.Settings.Encrypt = mitem
 
 	mitem, err = gtk.MenuItemNewWithLabel("Lock wallet")
 	if err != nil {
@@ -78,6 +89,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		}()
 	})
 	dropdown.Append(mitem)
+	MenuBar.Settings.Lock = mitem
 
 	mitem, err = gtk.MenuItemNewWithLabel("Unlock Wallet...")
 	if err != nil {
@@ -88,6 +100,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		dialog.Run()
 	})
 	dropdown.Append(mitem)
+	MenuBar.Settings.Unlock = mitem
 
 	return menu
 }

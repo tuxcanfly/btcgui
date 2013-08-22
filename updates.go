@@ -396,7 +396,7 @@ func reqLockState(ws *websocket.Conn) error {
 }
 
 func cmdWalletLock(ws *websocket.Conn) error {
-	// Don't really care about handling replies.  Is wallet is already
+	// Don't really care about handling replies.  If wallet is already
 	// locked, great.
 	msg, err := btcjson.CreateMessage("walletlock")
 	if err != nil {

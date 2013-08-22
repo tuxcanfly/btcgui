@@ -54,9 +54,9 @@ var (
 	// result.  Mutex protects against multiple writes.
 	replyHandlers = struct {
 		sync.Mutex
-		m map[uint64]func(interface{})
+		m map[uint64]func(interface{}, interface{})
 	}{
-		m: make(map[uint64]func(interface{})),
+		m: make(map[uint64]func(interface{}, interface{})),
 	}
 
 	// Channels filled from fetchFuncs and read by updateFuncs.
@@ -68,6 +68,7 @@ var (
 		bcHeight         chan int64
 		bcHeightRemote   chan int64
 		addrs            chan []string
+		lockState        chan bool
 	}{
 		btcdConnected:    make(chan int),
 		btcdDisconnected: make(chan int),
@@ -76,12 +77,21 @@ var (
 		bcHeight:         make(chan int64),
 		bcHeightRemote:   make(chan int64),
 		addrs:            make(chan []string),
+		lockState:        make(chan bool),
 	}
 
 	triggers = struct {
-		newAddr chan int
+		newAddr      chan int
+		unlockWallet chan string
 	}{
-		newAddr: make(chan int),
+		newAddr:      make(chan int),
+		unlockWallet: make(chan string),
+	}
+
+	triggerReplies = struct {
+		unlockSuccessful chan bool
+	}{
+		unlockSuccessful: make(chan bool),
 	}
 
 	reqFuncs = [](func(*websocket.Conn) error){
@@ -157,7 +167,7 @@ func ListenAndUpdate() error {
 				delete(replyHandlers.m, uintId)
 				replyHandlers.Unlock()
 				if f != nil {
-					go f(rply["result"])
+					go f(rply["result"], rply["error"])
 				}
 			} else if strId, ok := (rply["id"]).(string); ok {
 				// Handle btcwallet notification.
@@ -165,6 +175,8 @@ func ListenAndUpdate() error {
 			}
 		case <-triggers.newAddr:
 			go reqNewAddr(ws)
+		case pass := <-triggers.unlockWallet:
+			go cmdWalletPassphrase(ws, pass)
 		}
 	}
 }
@@ -178,8 +190,14 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 	case "btcwallet:btcddisconnected":
 		updateChans.btcdDisconnected <- 1
 	case "btcwallet:newbalance":
+	case "btcwallet:newwalletlockstate":
+		if r, ok := result.(bool); ok {
+			updateChans.lockState <- r
+		}
 	case "btcd:newblockchainheight":
-		updateChans.bcHeight <- int64(result.(float64))
+		if r, ok := result.(float64); ok {
+			updateChans.bcHeight <- int64(r)
+		}
 	}
 }
 
@@ -198,7 +216,7 @@ func reqNewAddr(ws *websocket.Conn) error {
 	}
 
 	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}) {
+	replyHandlers.m[n] = func(result, err interface{}) {
 		glib.IdleAdd(func() {
 			var iter gtk.TreeIter
 			RecvElems.Store.Append(&iter)
@@ -224,7 +242,7 @@ func reqProgress(ws *websocket.Conn) error {
 	}
 
 	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}) {
+	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.(float64); ok {
 			updateChans.bcHeight <- int64(r)
 		}
@@ -282,7 +300,7 @@ func reqAddresses(ws *websocket.Conn) error {
 	}
 
 	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}) {
+	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.([]interface{}); ok {
 			addrs := []string{}
 			for _, v := range r {
@@ -311,7 +329,7 @@ func reqBalance(ws *websocket.Conn) error {
 	}
 
 	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}) {
+	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.(float64); ok {
 			updateChans.balance <- r
 		}
@@ -336,7 +354,7 @@ func reqUnconfirmed(ws *websocket.Conn) error {
 	}
 
 	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}) {
+	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.(float64); ok {
 			updateChans.balance <- r
 		}
@@ -354,18 +372,44 @@ func reqLockState(ws *websocket.Conn) error {
 
 	m := btcjson.Message{
 		Jsonrpc: "",
-		Id: n,
-		Method: "walletislocked",
-		Params: []interface{}{},
+		Id:      n,
+		Method:  "walletislocked",
+		Params:  []interface{}{},
 	}
 	msg, _ := json.Marshal(&m)
 
 	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}) {
+	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.(bool); ok {
 			// TODO(jrick): add to statusbar?
 			fmt.Println("Wallet locked?", r)
 		}
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+func cmdWalletPassphrase(ws *websocket.Conn, passphrase string) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	m := btcjson.Message{
+		Jsonrpc: "",
+		Id:      n,
+		Method:  "walletpassphrase",
+		Params: []interface{}{
+			passphrase,
+			5, // TODO(jrick): Ask this from user in GUI
+		},
+	}
+	msg, _ := json.Marshal(&m)
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result, err interface{}) {
+		triggerReplies.unlockSuccessful <- err == nil
 	}
 	replyHandlers.Unlock()
 

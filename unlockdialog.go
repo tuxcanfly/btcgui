@@ -20,7 +20,6 @@ import (
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
-	"fmt"
 )
 
 func createUnlockDialog() *gtk.Dialog {
@@ -79,11 +78,17 @@ func createUnlockDialog() *gtk.Dialog {
 				return
 			}
 
-			// Attempt wallet decryption
-			fmt.Println("you entered:", pStr)
+			triggers.unlockWallet <- pStr
 
-			// For now, assume we succeeded.
-			dialog.Destroy()
+			go func() {
+				if ok := <-triggerReplies.unlockSuccessful; ok {
+					glib.IdleAdd(func() {
+						dialog.Destroy()
+					})
+				} else {
+					// Spawn dialog to warn decryption failed.
+				}
+			}()
 		case gtk.RESPONSE_CANCEL:
 			dialog.Destroy()
 		}

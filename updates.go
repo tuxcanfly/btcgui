@@ -24,6 +24,7 @@ import (
 	"github.com/conformal/btcjson"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
+	"log"
 	"math"
 	"strconv"
 	"sync"
@@ -82,9 +83,11 @@ var (
 
 	triggers = struct {
 		newAddr      chan int
+		lockWallet   chan int
 		unlockWallet chan *UnlockParams
 	}{
 		newAddr:      make(chan int),
+		lockWallet:   make(chan int),
 		unlockWallet: make(chan *UnlockParams),
 	}
 
@@ -175,6 +178,8 @@ func ListenAndUpdate() error {
 			}
 		case <-triggers.newAddr:
 			go reqNewAddr(ws)
+		case <-triggers.lockWallet:
+			go cmdWalletLock(ws)
 		case params := <-triggers.unlockWallet:
 			go cmdWalletPassphrase(ws, params)
 		}
@@ -198,6 +203,8 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 		if r, ok := result.(float64); ok {
 			updateChans.bcHeight <- int64(r)
 		}
+	default:
+		log.Printf("Unhandled message with id '%s'\n", id)
 	}
 }
 
@@ -386,6 +393,17 @@ func reqLockState(ws *websocket.Conn) error {
 		}
 	}
 	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+func cmdWalletLock(ws *websocket.Conn) error {
+	// Don't really care about handling replies.  Is wallet is already
+	// locked, great.
+	msg, err := btcjson.CreateMessage("walletlock")
+	if err != nil {
+		return err
+	}
 
 	return websocket.Message.Send(ws, msg)
 }

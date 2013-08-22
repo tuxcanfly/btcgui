@@ -80,7 +80,9 @@ func createRecvCoins() *gtk.Widget {
 	}
 	newAddr.SetSizeRequest(150, -1)
 	newAddr.Connect("clicked", func() {
-		triggers.newAddr <- 1
+		go func() {
+			triggers.newAddr <- 1
+		}()
 	})
 
 	buttons, err := gtk.GridNew()

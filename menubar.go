@@ -68,6 +68,17 @@ func createSettingsMenu() *gtk.MenuItem {
 	})
 	dropdown.Append(mitem)
 
+	mitem, err = gtk.MenuItemNewWithLabel("Lock wallet")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mitem.Connect("activate", func() {
+		go func() {
+			triggers.lockWallet <- 1
+		}()
+	})
+	dropdown.Append(mitem)
+
 	mitem, err = gtk.MenuItemNewWithLabel("Unlock Wallet...")
 	if err != nil {
 		log.Fatal(err)

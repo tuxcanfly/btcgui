@@ -104,12 +104,14 @@ func createUnlockDialog() *gtk.Dialog {
 				return
 			}
 
-			triggers.unlockWallet <- &UnlockParams{
-				pStr,
-				int64(timeout.GetValueAsInt()),
-			}
+			timeoutSecs := timeout.GetValueAsInt()
 
 			go func() {
+				triggers.unlockWallet <- &UnlockParams{
+					pStr,
+					int64(timeoutSecs),
+				}
+
 				if ok := <-triggerReplies.unlockSuccessful; ok {
 					glib.IdleAdd(func() {
 						dialog.Destroy()

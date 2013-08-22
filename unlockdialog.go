@@ -86,7 +86,14 @@ func createUnlockDialog() *gtk.Dialog {
 						dialog.Destroy()
 					})
 				} else {
-					// Spawn dialog to warn decryption failed.
+					glib.IdleAdd(func() {
+						mDialog := gtk.MessageDialogNew(dialog, 0,
+							gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
+							"Wallet decryption failed.")
+						mDialog.SetTitle("Wallet decryption failed")
+						mDialog.Run()
+						mDialog.Destroy()
+					})
 				}
 			}()
 		case gtk.RESPONSE_CANCEL:

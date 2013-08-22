@@ -22,6 +22,14 @@ import (
 	"log"
 )
 
+type UnlockParams struct {
+	passphrase string
+	timeout    int64
+}
+
+const unlockMessage = "Enter the wallet passphrase and a timeout in seconds.\n" +
+	"The wallet will automatically lock after the timeout has expired."
+
 func createUnlockDialog() *gtk.Dialog {
 	dialog, err := gtk.DialogNew()
 	if err != nil {
@@ -38,7 +46,6 @@ func createUnlockDialog() *gtk.Dialog {
 	}
 	grid.SetHExpand(true)
 	grid.SetVExpand(true)
-	grid.SetOrientation(gtk.ORIENTATION_HORIZONTAL)
 	b, err := dialog.GetContentArea()
 	if err != nil {
 		log.Fatal(err)
@@ -47,11 +54,17 @@ func createUnlockDialog() *gtk.Dialog {
 	b.SetHExpand(true)
 	b.SetVExpand(true)
 
-	l, err := gtk.LabelNew("Enter wallet passphrase")
+	lbl, err := gtk.LabelNew(unlockMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
-	grid.Add(l)
+	grid.Attach(lbl, 0, 0, 2, 1)
+
+	lbl, err = gtk.LabelNew("Passphrase")
+	if err != nil {
+		log.Fatal(err)
+	}
+	grid.Attach(lbl, 0, 1, 1, 1)
 
 	passphrase, err := gtk.EntryNew()
 	if err != nil {
@@ -63,7 +76,20 @@ func createUnlockDialog() *gtk.Dialog {
 	passphrase.Connect("activate", func() {
 		dialog.Emit("response", gtk.RESPONSE_OK, nil)
 	})
-	grid.Add(passphrase)
+	grid.Attach(passphrase, 1, 1, 1, 1)
+
+	lbl, err = gtk.LabelNew("Timeout (s)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	grid.Attach(lbl, 0, 2, 1, 1)
+
+	timeout, err := gtk.SpinButtonNewWithRange(0, float64(1 << 64 - 1), 1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	timeout.SetValue(60)
+	grid.Attach(timeout, 1, 2, 1, 1)
 
 	dialog.SetTransientFor(mainWindow)
 	dialog.SetPosition(gtk.WIN_POS_CENTER_ON_PARENT)
@@ -78,7 +104,10 @@ func createUnlockDialog() *gtk.Dialog {
 				return
 			}
 
-			triggers.unlockWallet <- pStr
+			triggers.unlockWallet <- &UnlockParams{
+				pStr,
+				int64(timeout.GetValueAsInt()),
+			}
 
 			go func() {
 				if ok := <-triggerReplies.unlockSuccessful; ok {

@@ -82,10 +82,10 @@ var (
 
 	triggers = struct {
 		newAddr      chan int
-		unlockWallet chan string
+		unlockWallet chan *UnlockParams
 	}{
 		newAddr:      make(chan int),
-		unlockWallet: make(chan string),
+		unlockWallet: make(chan *UnlockParams),
 	}
 
 	triggerReplies = struct {
@@ -175,8 +175,8 @@ func ListenAndUpdate() error {
 			}
 		case <-triggers.newAddr:
 			go reqNewAddr(ws)
-		case pass := <-triggers.unlockWallet:
-			go cmdWalletPassphrase(ws, pass)
+		case params := <-triggers.unlockWallet:
+			go cmdWalletPassphrase(ws, params)
 		}
 	}
 }
@@ -390,7 +390,7 @@ func reqLockState(ws *websocket.Conn) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-func cmdWalletPassphrase(ws *websocket.Conn, passphrase string) error {
+func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -401,8 +401,8 @@ func cmdWalletPassphrase(ws *websocket.Conn, passphrase string) error {
 		Id:      n,
 		Method:  "walletpassphrase",
 		Params: []interface{}{
-			passphrase,
-			5, // TODO(jrick): Ask this from user in GUI
+			params.passphrase,
+			params.timeout,
 		},
 	}
 	msg, _ := json.Marshal(&m)

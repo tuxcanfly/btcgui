@@ -161,8 +161,7 @@ func ListenAndUpdate() error {
 			json.Unmarshal(r, &rply)
 
 			// json.Unmarshal unmarshalls numbers as float64
-			floatId, ok := rply["id"].(float64)
-			if ok {
+			if floatId, ok := rply["id"].(float64); ok {
 				uintId := uint64(floatId)
 				replyHandlers.Lock()
 				f := replyHandlers.m[uintId]

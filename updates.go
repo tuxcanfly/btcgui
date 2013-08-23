@@ -52,7 +52,7 @@ var (
 	// messages and replies, and a function to handle the returned
 	// result.  Mutex protects against multiple writes.
 	replyHandlers = struct {
-		sync.Mutex
+		sync.RWMutex
 		m map[uint64]func(interface{}, interface{})
 	}{
 		m: make(map[uint64]func(interface{}, interface{})),

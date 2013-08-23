@@ -89,7 +89,7 @@ func createUnlockDialog() *gtk.Dialog {
 		log.Fatal(err)
 	}
 	timeout.SetValue(60)
-	timeout.Connect("activate", func () {
+	timeout.Connect("activate", func() {
 		dialog.Emit("response", gtk.RESPONSE_OK, nil)
 	})
 	grid.Attach(timeout, 1, 2, 1, 1)

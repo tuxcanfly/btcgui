@@ -160,9 +160,11 @@ func ListenAndUpdate() error {
 			var rply map[string]interface{}
 			json.Unmarshal(r, &rply)
 
-			// json.Unmarshal unmarshalls numbers as float64
-			if floatId, ok := rply["id"].(float64); ok {
-				uintId := uint64(floatId)
+			switch rply["id"].(type) {
+			case float64:
+				// json.Unmarshal unmarshalls all numbers as
+				// float64
+				uintId := uint64(rply["id"].(float64))
 				replyHandlers.Lock()
 				f := replyHandlers.m[uintId]
 				delete(replyHandlers.m, uintId)
@@ -170,9 +172,10 @@ func ListenAndUpdate() error {
 				if f != nil {
 					go f(rply["result"], rply["error"])
 				}
-			} else if strId, ok := (rply["id"]).(string); ok {
+			case string:
 				// Handle btcwallet notification.
-				go handleBtcwalletNtfn(strId, rply["result"])
+				go handleBtcwalletNtfn(rply["id"].(string),
+					rply["result"])
 			}
 		case <-triggers.newAddr:
 			go reqNewAddr(ws)

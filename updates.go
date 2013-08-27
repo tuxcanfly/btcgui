@@ -200,7 +200,7 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 		if r, ok := result.(bool); ok {
 			updateChans.lockState <- r
 		}
-	case "btcd:newblockchainheight":
+	case "btcwallet:newblockchainheight":
 		if r, ok := result.(float64); ok {
 			updateChans.bcHeight <- int64(r)
 		}

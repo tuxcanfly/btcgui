@@ -225,12 +225,25 @@ func reqNewAddr(ws *websocket.Conn) error {
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result, err interface{}) {
-		glib.IdleAdd(func() {
-			var iter gtk.TreeIter
-			RecvElems.Store.Append(&iter)
-			RecvElems.Store.Set(&iter, []int{0, 1},
-				[]interface{}{"", result.(string)})
-		})
+		if err != nil {
+			e := err.(map[string]interface{})
+			glib.IdleAdd(func() {
+				mDialog := gtk.MessageDialogNew(mainWindow, 0,
+					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
+					e["message"].(string))
+				mDialog.SetTitle("New Address Generation Failed")
+				mDialog.Run()
+				mDialog.Destroy()
+
+			})
+		} else {
+			glib.IdleAdd(func() {
+				var iter gtk.TreeIter
+				RecvElems.Store.Append(&iter)
+				RecvElems.Store.Set(&iter, []int{0, 1},
+					[]interface{}{"", result.(string)})
+			})
+		}
 	}
 	replyHandlers.Unlock()
 

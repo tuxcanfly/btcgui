@@ -267,7 +267,7 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) error
 	seq.Unlock()
 
 	m := &btcjson.Message{
-		Jsonrpc: "",
+		Jsonrpc: "1.0",
 		Id:      n,
 		Method:  "createencryptedwallet",
 		Params: []interface{}{
@@ -455,7 +455,7 @@ func reqLockState(ws *websocket.Conn) error {
 	seq.Unlock()
 
 	m := btcjson.Message{
-		Jsonrpc: "",
+		Jsonrpc: "1.0",
 		Id:      n,
 		Method:  "walletislocked",
 		Params:  []interface{}{},
@@ -491,7 +491,7 @@ func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 	seq.Unlock()
 
 	m := btcjson.Message{
-		Jsonrpc: "",
+		Jsonrpc: "1.0",
 		Id:      n,
 		Method:  "walletpassphrase",
 		Params: []interface{}{

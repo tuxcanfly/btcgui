@@ -99,13 +99,15 @@ var (
 		walletCreationErr: make(chan error),
 	}
 
-	reqFuncs = [](func(*websocket.Conn) error){
+	walletReqFuncs = [](func(*websocket.Conn) error){
 		reqAddresses,
 		reqBalance,
-		reqProgress,
-		//reqRemoteProgress,
 		reqUnconfirmed,
 		reqLockState,
+	}
+	btcdReqFuncs = [](func(*websocket.Conn) error){
+		reqProgress,
+		//reqRemoteProgress,
 	}
 	updateFuncs = [](func()){
 		updateAddresses,
@@ -149,8 +151,11 @@ func ListenAndUpdate() error {
 		}
 	}()
 
-	for _, f := range reqFuncs {
-		// TODO(jrick): don't throw away errors here
+	// TODO(jrick): don't throw away errors here
+	for _, f := range walletReqFuncs {
+		go f(ws)
+	}
+	for _, f := range btcdReqFuncs {
 		go f(ws)
 	}
 
@@ -279,6 +284,12 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) error
 			triggerReplies.walletCreationErr <- errors.New(e["message"].(string))
 		} else {
 			triggerReplies.walletCreationErr <- nil
+
+			// Request all wallet-related info again, now that the
+			// default wallet is available.
+			for _, f := range walletReqFuncs {
+				go f(ws)
+			}
 		}
 	}
 	replyHandlers.Unlock()

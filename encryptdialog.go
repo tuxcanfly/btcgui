@@ -29,10 +29,10 @@ const encryptMessage = "Enter the new passphrase to the wallet.\n" +
 	"<b>eight or more words</b>" +
 	"."
 
-func createEncryptionDialog() *gtk.Dialog {
+func createEncryptionDialog() (*gtk.Dialog, error) {
 	dialog, err := gtk.DialogNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	dialog.SetTitle("Encrypt wallet")
 
@@ -41,13 +41,13 @@ func createEncryptionDialog() *gtk.Dialog {
 
 	grid, err := gtk.GridNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.SetHExpand(true)
 	grid.SetVExpand(true)
 	b, err := dialog.GetContentArea()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	b.Add(grid)
 	b.SetHExpand(true)
@@ -55,7 +55,7 @@ func createEncryptionDialog() *gtk.Dialog {
 
 	l, err := gtk.LabelNew("")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	l.SetMarkup(encryptMessage)
 	l.SetHExpand(true)
@@ -65,13 +65,13 @@ func createEncryptionDialog() *gtk.Dialog {
 
 	l, err = gtk.LabelNew("New passphrase")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.Attach(l, 0, 1, 1, 1)
 
 	passphrase, err := gtk.EntryNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	passphrase.SetVisibility(false)
 	passphrase.SetHExpand(true)
@@ -82,7 +82,7 @@ func createEncryptionDialog() *gtk.Dialog {
 
 	l, err = gtk.LabelNew("Repeat new passphrase")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	l.SetVExpand(true)
 	l.SetVAlign(gtk.ALIGN_START)
@@ -90,7 +90,7 @@ func createEncryptionDialog() *gtk.Dialog {
 
 	repeated, err := gtk.EntryNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	repeated.SetVisibility(false)
 	repeated.SetVExpand(true)
@@ -109,11 +109,13 @@ func createEncryptionDialog() *gtk.Dialog {
 		case gtk.RESPONSE_OK:
 			pStr, err := passphrase.GetText()
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
+				return
 			}
 			rStr, err := repeated.GetText()
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
+				return
 			}
 			if pStr == rStr {
 				// use the passphrase, encrypt wallet...
@@ -131,5 +133,5 @@ func createEncryptionDialog() *gtk.Dialog {
 		}
 	})
 
-	return dialog
+	return dialog, nil
 }

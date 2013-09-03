@@ -74,9 +74,10 @@ func createSettingsMenu() *gtk.MenuItem {
 		log.Fatal(err)
 	}
 	mitem.Connect("activate", func() {
-		dialog, err := createNewWalletDialog()
-		if err != nil {
+		if dialog, err := createNewWalletDialog(); err != nil {
 			dialog.Run()
+		} else {
+			log.Print(err)
 		}
 	})
 	dropdown.Append(mitem)
@@ -87,8 +88,11 @@ func createSettingsMenu() *gtk.MenuItem {
 		log.Fatal(err)
 	}
 	mitem.Connect("activate", func() {
-		dialog := createEncryptionDialog()
-		dialog.Run()
+		if dialog, err := createEncryptionDialog(); err != nil {
+			dialog.Run()
+		} else {
+			log.Print(err)
+		}
 	})
 	dropdown.Append(mitem)
 	MenuBar.Settings.Encrypt = mitem
@@ -110,8 +114,11 @@ func createSettingsMenu() *gtk.MenuItem {
 		log.Fatal(err)
 	}
 	mitem.Connect("activate", func() {
-		dialog := createUnlockDialog()
-		dialog.Run()
+		if dialog, err := createUnlockDialog(); err != nil {
+			dialog.Run()
+		} else {
+			log.Print(err)
+		}
 	})
 	dropdown.Append(mitem)
 	MenuBar.Settings.Unlock = mitem

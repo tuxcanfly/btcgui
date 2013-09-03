@@ -30,10 +30,10 @@ type UnlockParams struct {
 const unlockMessage = "Enter the wallet passphrase and a timeout in seconds.\n" +
 	"The wallet will automatically lock after the timeout has expired."
 
-func createUnlockDialog() *gtk.Dialog {
+func createUnlockDialog() (*gtk.Dialog, error) {
 	dialog, err := gtk.DialogNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	dialog.SetTitle("Unlock wallet")
 
@@ -42,13 +42,13 @@ func createUnlockDialog() *gtk.Dialog {
 
 	grid, err := gtk.GridNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.SetHExpand(true)
 	grid.SetVExpand(true)
 	b, err := dialog.GetContentArea()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	b.Add(grid)
 	b.SetHExpand(true)
@@ -56,19 +56,19 @@ func createUnlockDialog() *gtk.Dialog {
 
 	lbl, err := gtk.LabelNew(unlockMessage)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.Attach(lbl, 0, 0, 2, 1)
 
 	lbl, err = gtk.LabelNew("Passphrase")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.Attach(lbl, 0, 1, 1, 1)
 
 	passphrase, err := gtk.EntryNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	passphrase.SetVisibility(false)
 	passphrase.SetHExpand(true)
@@ -80,13 +80,13 @@ func createUnlockDialog() *gtk.Dialog {
 
 	lbl, err = gtk.LabelNew("Timeout (s)")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.Attach(lbl, 0, 2, 1, 1)
 
 	timeout, err := gtk.SpinButtonNewWithRange(0, float64(1<<64-1), 1)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	timeout.SetValue(60)
 	timeout.Connect("activate", func() {
@@ -135,5 +135,5 @@ func createUnlockDialog() *gtk.Dialog {
 		}
 	})
 
-	return dialog
+	return dialog, nil
 }

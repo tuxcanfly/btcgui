@@ -429,7 +429,7 @@ func reqUnconfirmed(ws *websocket.Conn) error {
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result, err interface{}) {
 		if r, ok := result.(float64); ok {
-			updateChans.balance <- r
+			updateChans.unconfirmed <- r
 		}
 	}
 	replyHandlers.Unlock()

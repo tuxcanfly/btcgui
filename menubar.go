@@ -24,6 +24,7 @@ import (
 var (
 	MenuBar = struct {
 		Settings struct {
+			New     *gtk.MenuItem
 			Encrypt *gtk.MenuItem
 			Lock    *gtk.MenuItem
 			Unlock  *gtk.MenuItem
@@ -68,7 +69,18 @@ func createSettingsMenu() *gtk.MenuItem {
 	}
 	menu.SetSubmenu(dropdown)
 
-	mitem, err := gtk.MenuItemNewWithLabel("Encrypt Wallet...")
+	mitem, err := gtk.MenuItemNewWithLabel("New Wallet...")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mitem.Connect("activate", func() {
+		dialog := createNewWalletDialog()
+		dialog.Run()
+	})
+	dropdown.Append(mitem)
+	MenuBar.Settings.New = mitem
+
+	mitem, err = gtk.MenuItemNewWithLabel("Encrypt Wallet...")
 	if err != nil {
 		log.Fatal(err)
 	}

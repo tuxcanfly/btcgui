@@ -81,18 +81,22 @@ var (
 
 	triggers = struct {
 		newAddr      chan int
+		newWallet    chan *NewWalletParams
 		lockWallet   chan int
 		unlockWallet chan *UnlockParams
 	}{
 		newAddr:      make(chan int),
+		newWallet:    make(chan *NewWalletParams),
 		lockWallet:   make(chan int),
 		unlockWallet: make(chan *UnlockParams),
 	}
 
 	triggerReplies = struct {
-		unlockSuccessful chan bool
+		unlockSuccessful  chan bool
+		walletCreationErr chan error
 	}{
-		unlockSuccessful: make(chan bool),
+		unlockSuccessful:  make(chan bool),
+		walletCreationErr: make(chan error),
 	}
 
 	reqFuncs = [](func(*websocket.Conn) error){
@@ -179,6 +183,8 @@ func ListenAndUpdate() error {
 			}
 		case <-triggers.newAddr:
 			go reqNewAddr(ws)
+		case params := <-triggers.newWallet:
+			go cmdCreateEncryptedWallet(ws, params)
 		case <-triggers.lockWallet:
 			go cmdWalletLock(ws)
 		case params := <-triggers.unlockWallet:
@@ -225,13 +231,12 @@ func reqNewAddr(ws *websocket.Conn) error {
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result, err interface{}) {
-		if err != nil {
-			e := err.(map[string]interface{})
+		if e, ok := err.(map[string]interface{}); ok {
 			glib.IdleAdd(func() {
 				mDialog := gtk.MessageDialogNew(mainWindow, 0,
 					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
 					e["message"].(string))
-				mDialog.SetTitle("New Address Generation Failed")
+				mDialog.SetTitle("New address generation failed")
 				mDialog.Run()
 				mDialog.Destroy()
 
@@ -243,6 +248,37 @@ func reqNewAddr(ws *websocket.Conn) error {
 				RecvElems.Store.Set(&iter, []int{0, 1},
 					[]interface{}{"", result.(string)})
 			})
+		}
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	m := &btcjson.Message{
+		Jsonrpc: "",
+		Id:      n,
+		Method:  "createencryptedwallet",
+		Params: []interface{}{
+			params.name,
+			params.desc,
+			params.passphrase,
+		},
+	}
+	msg, _ := json.Marshal(m)
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result, err interface{}) {
+		if e, ok := err.(map[string]interface{}); ok {
+			triggerReplies.walletCreationErr <- errors.New(e["message"].(string))
+		} else {
+			triggerReplies.walletCreationErr <- nil
 		}
 	}
 	replyHandlers.Unlock()
@@ -306,7 +342,7 @@ func fetchRemoteProgress(ws *websocket.Conn) {
 }
 */
 
-// reqAddresses requestse all addresses for an account.
+// reqAddresses requests all addresses for an account.
 //
 // TODO(jrick): support addresses other than the default address.
 func reqAddresses(ws *websocket.Conn) error {
@@ -351,6 +387,18 @@ func reqBalance(ws *websocket.Conn) error {
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result, err interface{}) {
+		if err != nil {
+			if e, ok := err.(map[string]interface{}); ok {
+				if code, ok := e["code"].(int); ok {
+					// TODO(jcv): move error constants to
+					// btcjson package.
+					if code == -11 {
+						// TODO(jrick): Spawn new wallet dialog
+					}
+					return
+				}
+			}
+		}
 		if r, ok := result.(float64); ok {
 			updateChans.balance <- r
 		}

@@ -389,11 +389,15 @@ func reqBalance(ws *websocket.Conn) error {
 	replyHandlers.m[n] = func(result, err interface{}) {
 		if err != nil {
 			if e, ok := err.(map[string]interface{}); ok {
-				if code, ok := e["code"].(int); ok {
+				if code, ok := e["code"].(float64); ok {
 					// TODO(jcv): move error constants to
 					// btcjson package.
-					if code == -11 {
-						// TODO(jrick): Spawn new wallet dialog
+					if int(code) == -11 {
+						glib.IdleAdd(func() {
+							if dialog, err := createNewWalletDialog(); err != nil {
+								dialog.Run()
+							}
+						})
 					}
 					return
 				}

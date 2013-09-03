@@ -74,8 +74,10 @@ func createSettingsMenu() *gtk.MenuItem {
 		log.Fatal(err)
 	}
 	mitem.Connect("activate", func() {
-		dialog := createNewWalletDialog()
-		dialog.Run()
+		dialog, err := createNewWalletDialog()
+		if err != nil {
+			dialog.Run()
+		}
 	})
 	dropdown.Append(mitem)
 	MenuBar.Settings.New = mitem

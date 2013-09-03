@@ -28,10 +28,10 @@ type NewWalletParams struct {
 	passphrase string
 }
 
-func createNewWalletDialog() *gtk.Dialog {
+func createNewWalletDialog() (*gtk.Dialog, error) {
 	dialog, err := gtk.DialogNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	dialog.SetTitle("New wallet")
 
@@ -40,13 +40,13 @@ func createNewWalletDialog() *gtk.Dialog {
 
 	grid, err := gtk.GridNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.SetHExpand(true)
 	grid.SetVExpand(true)
 	b, err := dialog.GetContentArea()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	b.Add(grid)
 	b.SetHExpand(true)
@@ -54,13 +54,13 @@ func createNewWalletDialog() *gtk.Dialog {
 
 	l, err := gtk.LabelNew("Passphrase")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.Attach(l, 0, 0, 1, 1)
 
 	passphrase, err := gtk.EntryNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	passphrase.SetVisibility(false)
 	passphrase.SetHExpand(true)
@@ -71,7 +71,7 @@ func createNewWalletDialog() *gtk.Dialog {
 
 	l, err = gtk.LabelNew("Repeat passphrase")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	l.SetVExpand(true)
 	l.SetVAlign(gtk.ALIGN_START)
@@ -79,7 +79,7 @@ func createNewWalletDialog() *gtk.Dialog {
 
 	repeated, err := gtk.EntryNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	repeated.SetVisibility(false)
 	repeated.SetVExpand(true)
@@ -98,11 +98,13 @@ func createNewWalletDialog() *gtk.Dialog {
 		case gtk.RESPONSE_OK:
 			pStr, err := passphrase.GetText()
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
+				return
 			}
 			rStr, err := repeated.GetText()
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
+				return
 			}
 			if pStr == rStr {
 				go func() {
@@ -140,5 +142,5 @@ func createNewWalletDialog() *gtk.Dialog {
 		}
 	})
 
-	return dialog
+	return dialog, nil
 }

@@ -27,12 +27,14 @@ import (
 
 type txDirection int
 
+// Possible directions of a transaction
 const (
-	SEND txDirection = iota
-	RECV
+	Send txDirection = iota
+	Recv
 )
 
 var (
+	// Overview holds pointers to widgets shown in the overview tab.
 	Overview = struct {
 		Balance       *gtk.Label
 		Unconfirmed   *gtk.Label
@@ -119,8 +121,8 @@ func createTxInfo() *gtk.Widget {
 	grid.Add(l)
 
 	// TODO(jrick): connect this
-	grid.Add(createTxLabel(SEND, 1.0, "1234567890", time.Now()))
-	grid.Add(createTxLabel(RECV, 1.0, "0987654321", time.Now()))
+	grid.Add(createTxLabel(Send, 1.0, "1234567890", time.Now()))
+	grid.Add(createTxLabel(Recv, 1.0, "0987654321", time.Now()))
 
 	return &grid.Container.Widget
 }
@@ -136,7 +138,7 @@ func createTxLabel(dir txDirection, amt float64, addr string, t time.Time) *gtk.
 	var description *gtk.Label
 	var icon *gtk.Image
 	switch dir {
-	case SEND:
+	case Send:
 		s := "-" +
 			strconv.FormatFloat(math.Abs(0), 'f', 8, 64) +
 			" BTC"
@@ -156,7 +158,7 @@ func createTxLabel(dir txDirection, amt float64, addr string, t time.Time) *gtk.
 		if err != nil {
 			log.Fatal(err)
 		}
-	case RECV:
+	case Recv:
 		s := strconv.FormatFloat(math.Abs(0), 'f', 8, 64) +
 			" BTC"
 

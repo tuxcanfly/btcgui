@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	// MenuBar holds pointers to various items in the menu.
 	MenuBar = struct {
 		Settings struct {
 			New     *gtk.MenuItem

@@ -37,7 +37,9 @@ const (
 
 // Errors
 var (
-	ConnectionLost = errors.New("Connection lost.")
+	// ErrConnectionLost describes an error where a connection to
+	// another process was lost.
+	ErrConnectionLost = errors.New("connection lost")
 )
 
 var (
@@ -119,6 +121,9 @@ var (
 	}
 )
 
+// ListenAndUpdate opens a websocket connection to a btcwallet
+// instance and initiates requests to fill the GUI with relevant
+// information.
 func ListenAndUpdate() error {
 	// Connect to websocket.
 	// TODO(jrick): don't hardcode port
@@ -173,10 +178,10 @@ func ListenAndUpdate() error {
 			case float64:
 				// json.Unmarshal unmarshalls all numbers as
 				// float64
-				uintId := uint64(rply["id"].(float64))
+				uintID := uint64(rply["id"].(float64))
 				replyHandlers.Lock()
-				f := replyHandlers.m[uintId]
-				delete(replyHandlers.m, uintId)
+				f := replyHandlers.m[uintID]
+				delete(replyHandlers.m, uintID)
 				replyHandlers.Unlock()
 				if f != nil {
 					go f(rply["result"], rply["error"])

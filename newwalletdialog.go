@@ -22,6 +22,7 @@ import (
 	"log"
 )
 
+// NewWalletParams holds the parameters needed to create a new wallet.
 type NewWalletParams struct {
 	name       string
 	desc       string

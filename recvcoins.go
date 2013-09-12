@@ -23,6 +23,7 @@ import (
 	"log"
 )
 
+// RecvElems holds pointers to widgets in the receive coins tab.
 var RecvElems struct {
 	Store    *gtk.ListStore
 	Treeview *gtk.TreeView

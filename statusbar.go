@@ -21,6 +21,7 @@ import (
 	"log"
 )
 
+// StatusElems holds pointers to widgets in the statusbar.
 var StatusElems struct {
 	Pb  *gtk.ProgressBar
 	Lab *gtk.Label

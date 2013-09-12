@@ -36,6 +36,7 @@ type recipient struct {
 var (
 	recipients = list.New()
 
+	// SendCoins holds pointers to widgets in the send coins tab.
 	SendCoins = struct {
 		Balance *gtk.Label
 	}{}

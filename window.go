@@ -25,6 +25,7 @@ var (
 	mainWindow *gtk.Window
 )
 
+// CreateWindow creates the toplevel window for the GUI.
 func CreateWindow() *gtk.Window {
 	var err error
 	mainWindow, err = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)

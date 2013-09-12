@@ -22,6 +22,7 @@ import (
 	"log"
 )
 
+// UnlockParams holds parameters necessary to unlock a wallet.
 type UnlockParams struct {
 	passphrase string
 	timeout    int64

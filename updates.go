@@ -169,7 +169,7 @@ func ListenAndUpdate() error {
 		case r, ok := <-replies:
 			if !ok {
 				// btcwallet connection lost.
-				return ConnectionLost
+				return ErrConnectionLost
 			}
 			var rply map[string]interface{}
 			json.Unmarshal(r, &rply)

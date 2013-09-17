@@ -325,39 +325,6 @@ func reqProgress(ws *websocket.Conn) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-/* TODO(jrick): is this being done with websockets?
-// Connect to a remote server that should be up to date to compare
-// blochchain height progress.  Let's not hard code this server in the
-// future.
-func fetchRemoteProgress(ws *websocket.Conn) {
-	defer wg.Done()
-
-	msg, err := btcjson.CreateMessage("getblockcount")
-	if err != nil {
-		log.Print(err)
-		updateChans.bcHeightRemote <- -1
-		return
-	}
-	remote, err := btcjson.RpcCommand("bitcoinrpc",
-		"8X3yBH4oBq98wzVubaMhQrw5ZJWMECf5e2WoKz5DzBf",
-		"10.168.0.17:8332",
-		msg)
-	if err != nil {
-		log.Print(err)
-		updateChans.bcHeightRemote <- -1
-		return
-	}
-
-	rmtResult, err := btcjson.JSONToAmount(remote.Result.(float64))
-	if err != nil {
-		log.Print(err)
-		updateChans.bcHeightRemote <- -1
-		return
-	}
-	updateChans.bcHeightRemote <- rmtResult / satoshiPerBTC
-}
-*/
-
 // reqAddresses requests all addresses for an account.
 //
 // TODO(jrick): support addresses other than the default address.
@@ -453,6 +420,8 @@ func reqUnconfirmed(ws *websocket.Conn) error {
 	return websocket.Message.Send(ws, msg)
 }
 
+// reqLockState requests the current lock state of the
+// currently-opened wallet.
 func reqLockState(ws *websocket.Conn) error {
 	seq.Lock()
 	n := seq.n
@@ -478,9 +447,10 @@ func reqLockState(ws *websocket.Conn) error {
 	return websocket.Message.Send(ws, msg)
 }
 
+// cmdWalletLock locks the currently-opened wallet.  A reply handler
+// is not set up because the GUI will be updated after a
+// "btcwallet:newwalletlockstate" notification is sent.
 func cmdWalletLock(ws *websocket.Conn) error {
-	// Don't really care about handling replies.  If wallet is already
-	// locked, great.
 	msg, err := btcjson.CreateMessage("walletlock")
 	if err != nil {
 		return err
@@ -489,6 +459,9 @@ func cmdWalletLock(ws *websocket.Conn) error {
 	return websocket.Message.Send(ws, msg)
 }
 
+// cmdWalletPassphrase requests wallet to store the encryption
+// passphrase for the currently-opened wallet in memory for a given
+// number of seconds.
 func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 	seq.Lock()
 	n := seq.n
@@ -611,6 +584,8 @@ func updateUnconfirmed() {
 	}
 }
 
+// updateLockState updates the application widgets due to a change in
+// the currently-open wallet's lock state.
 func updateLockState() {
 	for {
 		locked, ok := <-updateChans.lockState

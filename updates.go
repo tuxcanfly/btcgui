@@ -37,6 +37,10 @@ const (
 
 // Errors
 var (
+	// ErrConnectionRefused describes an error where a connection to
+	// another process was refused.
+	ErrConnectionRefused = errors.New("connection refused")
+
 	// ErrConnectionLost describes an error where a connection to
 	// another process was lost.
 	ErrConnectionLost = errors.New("connection lost")
@@ -124,7 +128,7 @@ var (
 // ListenAndUpdate opens a websocket connection to a btcwallet
 // instance and initiates requests to fill the GUI with relevant
 // information.
-func ListenAndUpdate() error {
+func ListenAndUpdate(c chan error) {
 	// Connect to websocket.
 	// TODO(jrick): don't hardcode port
 	// TODO(jrick): use TLS
@@ -132,15 +136,17 @@ func ListenAndUpdate() error {
 	ws, err := websocket.Dial("ws://localhost:8332/frontend", "",
 		"http://localhost/")
 	if err != nil {
-		return err
+		c <- ErrConnectionRefused
+		return
 	}
+	c <- nil
 
 	// Start updater funcs
 	for _, f := range updateFuncs {
 		go f()
 	}
 
-	// Channel for replies and notifications from btcwallet.
+	// Buffered channel for replies and notifications from btcwallet.
 	replies := make(chan []byte, 100)
 
 	go func() {
@@ -149,6 +155,7 @@ func ListenAndUpdate() error {
 			var msg []byte
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
+				fmt.Println(err)
 				close(replies)
 				return
 			}
@@ -169,7 +176,8 @@ func ListenAndUpdate() error {
 		case r, ok := <-replies:
 			if !ok {
 				// btcwallet connection lost.
-				return ErrConnectionLost
+				c <- ErrConnectionLost
+				return
 			}
 			var rply map[string]interface{}
 			json.Unmarshal(r, &rply)

@@ -20,6 +20,7 @@ import (
 	"github.com/conformal/go-flags"
 	"github.com/conformal/gotk3/gtk"
 	"log"
+	"time"
 )
 
 type options struct {
@@ -48,9 +49,36 @@ func main() {
 	w.SetDefaultSize(800, 600)
 	w.ShowAll()
 
-	// Listen for and update GUI with new info
-	// TODO(jrick) don't throw away error
-	go ListenAndUpdate()
+	// Listen for updates and update GUI with new info.  Attempt
+	// reconnect if connection is lost or cannot be established.
+	go func() {
+		for {
+			replies := make(chan error)
+			done := make(chan int)
+			go func() {
+				ListenAndUpdate(replies)
+				close(done)
+			}()
+		selectLoop:
+			for {
+				select {
+				case <-done:
+					break selectLoop
+				case err := <-replies:
+					switch err {
+					case ErrConnectionRefused:
+						time.Sleep(5 * time.Second)
+					case ErrConnectionLost:
+						time.Sleep(5 * time.Second)
+					case nil:
+						// connected
+					default:
+						log.Printf("Unknown connect error: %v", err)
+					}
+				}
+			}
+		}
+	}()
 
 	gtk.Main()
 }

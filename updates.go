@@ -66,23 +66,23 @@ var (
 
 	// Channels filled from fetchFuncs and read by updateFuncs.
 	updateChans = struct {
-		btcdConnected    chan int
-		btcdDisconnected chan int
-		balance          chan float64
-		unconfirmed      chan float64
-		bcHeight         chan int64
-		bcHeightRemote   chan int64
-		addrs            chan []string
-		lockState        chan bool
+		btcdConnected      chan bool
+		btcwalletConnected chan bool
+		balance            chan float64
+		unconfirmed        chan float64
+		bcHeight           chan int64
+		bcHeightRemote     chan int64
+		addrs              chan []string
+		lockState          chan bool
 	}{
-		btcdConnected:    make(chan int),
-		btcdDisconnected: make(chan int),
-		balance:          make(chan float64),
-		unconfirmed:      make(chan float64),
-		bcHeight:         make(chan int64),
-		bcHeightRemote:   make(chan int64),
-		addrs:            make(chan []string),
-		lockState:        make(chan bool),
+		btcdConnected:      make(chan bool),
+		btcwalletConnected: make(chan bool),
+		balance:            make(chan float64),
+		unconfirmed:        make(chan float64),
+		bcHeight:           make(chan int64),
+		bcHeightRemote:     make(chan int64),
+		addrs:              make(chan []string),
+		lockState:          make(chan bool),
 	}
 
 	triggers = struct {
@@ -125,10 +125,20 @@ var (
 	}
 )
 
+var updateOnce sync.Once
+
 // ListenAndUpdate opens a websocket connection to a btcwallet
 // instance and initiates requests to fill the GUI with relevant
 // information.
 func ListenAndUpdate(c chan error) {
+	// Start each updater func in a goroutine.  Use a sync.Once to
+	// ensure there are no duplicate updater functions running.
+	updateOnce.Do(func() {
+		for _, f := range updateFuncs {
+			go f()
+		}
+	})
+
 	// Connect to websocket.
 	// TODO(jrick): don't hardcode port
 	// TODO(jrick): use TLS
@@ -140,11 +150,6 @@ func ListenAndUpdate(c chan error) {
 		return
 	}
 	c <- nil
-
-	// Start updater funcs
-	for _, f := range updateFuncs {
-		go f()
-	}
 
 	// Buffered channel for replies and notifications from btcwallet.
 	replies := make(chan []byte, 100)
@@ -216,9 +221,9 @@ func ListenAndUpdate(c chan error) {
 func handleBtcwalletNtfn(id string, result interface{}) {
 	switch id {
 	case "btcwallet:btcconnected":
-		updateChans.btcdConnected <- 1
+		updateChans.btcdConnected <- true
 	case "btcwallet:btcddisconnected":
-		updateChans.btcdDisconnected <- 1
+		updateChans.btcdConnected <- false
 	case "btcwallet:newbalance":
 	case "btcwallet:newwalletlockstate":
 		if r, ok := result.(bool); ok {
@@ -512,19 +517,32 @@ func strSliceEqual(a, b []string) bool {
 // updateConnectionState listens for connection status changes to btcd
 // and btcwallet, updating the GUI when necessary.
 func updateConnectionState() {
+	// Statusbar messages for various connection states.
+	btcdc := "Connected to btcd"
+	btcdd := "Connection to btcd lost"
+	btcwc := "Established connection to btcwallet"
+	btcwd := "Disconnected from btcwallet.  Attempting reconnect..."
+
 	for {
+		var text string
 		select {
-		case <-updateChans.btcdConnected:
-			glib.IdleAdd(func() {
-				StatusElems.Lab.SetText("Established connection to btcd.")
-				StatusElems.Pb.Hide()
-			})
-		case <-updateChans.btcdDisconnected:
-			glib.IdleAdd(func() {
-				StatusElems.Lab.SetText("Connection to btcd lost.")
-				StatusElems.Pb.Hide()
-			})
+		case conn := <-updateChans.btcwalletConnected:
+			if conn {
+				text = btcwc
+			} else {
+				text = btcwd
+			}
+		case conn := <-updateChans.btcdConnected:
+			if conn {
+				text = btcdc
+			} else {
+				text = btcdd
+			}
 		}
+		glib.IdleAdd(func(s string) {
+			StatusElems.Lab.SetText(s)
+			StatusElems.Pb.Hide()
+		}, text)
 	}
 }
 

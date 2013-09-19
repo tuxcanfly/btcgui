@@ -67,12 +67,17 @@ func main() {
 				case err := <-replies:
 					switch err {
 					case ErrConnectionRefused:
+						updateChans.btcwalletConnected <- false
 						time.Sleep(5 * time.Second)
 					case ErrConnectionLost:
+						updateChans.btcwalletConnected <- false
 						time.Sleep(5 * time.Second)
 					case nil:
 						// connected
+						updateChans.btcwalletConnected <- true
 					default:
+						// TODO(jrick): present unknown error to user in the
+						// GUI somehow.
 						log.Printf("Unknown connect error: %v", err)
 					}
 				}

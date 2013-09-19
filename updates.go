@@ -221,9 +221,9 @@ func ListenAndUpdate(c chan error) {
 func handleBtcwalletNtfn(id string, result interface{}) {
 	switch id {
 	case "btcwallet:btcconnected":
-		updateChans.btcdConnected <- true
-	case "btcwallet:btcddisconnected":
-		updateChans.btcdConnected <- false
+		if r, ok := result.(bool); ok {
+			updateChans.btcdConnected <- r
+		}
 	case "btcwallet:newbalance":
 	case "btcwallet:newwalletlockstate":
 		if r, ok := result.(bool); ok {

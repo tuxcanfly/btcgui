@@ -39,6 +39,7 @@ var (
 	// SendCoins holds pointers to widgets in the send coins tab.
 	SendCoins = struct {
 		Balance *gtk.Label
+		SendBtn *gtk.Button
 	}{}
 )
 
@@ -245,6 +246,8 @@ func createSendCoins() *gtk.Widget {
 	submitBtn.SetSizeRequest(150, -1)
 	submitBtn.SetHAlign(gtk.ALIGN_END)
 	submitBtn.SetHExpand(true)
+	submitBtn.SetSensitive(false)
+	SendCoins.SendBtn = submitBtn
 	bot.Add(submitBtn)
 
 	grid.Add(bot)

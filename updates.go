@@ -267,8 +267,8 @@ func reqNewAddr(ws *websocket.Conn) error {
 		} else {
 			glib.IdleAdd(func() {
 				var iter gtk.TreeIter
-				RecvElems.Store.Append(&iter)
-				RecvElems.Store.Set(&iter, []int{0, 1},
+				RecvCoins.Store.Append(&iter)
+				RecvCoins.Store.Set(&iter, []int{0, 1},
 					[]interface{}{"", result.(string)})
 			})
 		}
@@ -524,25 +524,44 @@ func updateConnectionState() {
 	btcwd := "Disconnected from btcwallet.  Attempting reconnect..."
 
 	for {
-		var text string
 		select {
 		case conn := <-updateChans.btcwalletConnected:
 			if conn {
-				text = btcwc
+				glib.IdleAdd(func() {
+					MenuBar.Settings.New.SetSensitive(true)
+					MenuBar.Settings.Encrypt.SetSensitive(true)
+					// Lock/Unlock sensitivity is set by wallet notification.
+					RecvCoins.NewAddrBtn.SetSensitive(true)
+					StatusElems.Lab.SetText(btcwc)
+					StatusElems.Pb.Hide()
+				})
 			} else {
-				text = btcwd
+				glib.IdleAdd(func() {
+					MenuBar.Settings.New.SetSensitive(false)
+					MenuBar.Settings.Encrypt.SetSensitive(false)
+					MenuBar.Settings.Lock.SetSensitive(false)
+					MenuBar.Settings.Unlock.SetSensitive(false)
+					SendCoins.SendBtn.SetSensitive(false)
+					RecvCoins.NewAddrBtn.SetSensitive(false)
+					StatusElems.Lab.SetText(btcwd)
+					StatusElems.Pb.Hide()
+				})
 			}
 		case conn := <-updateChans.btcdConnected:
 			if conn {
-				text = btcdc
+				glib.IdleAdd(func() {
+					SendCoins.SendBtn.SetSensitive(true)
+					StatusElems.Lab.SetText(btcdc)
+					StatusElems.Pb.Hide()
+				})
 			} else {
-				text = btcdd
+				glib.IdleAdd(func() {
+					SendCoins.SendBtn.SetSensitive(false)
+					StatusElems.Lab.SetText(btcdd)
+					StatusElems.Pb.Hide()
+				})
 			}
 		}
-		glib.IdleAdd(func(s string) {
-			StatusElems.Lab.SetText(s)
-			StatusElems.Pb.Hide()
-		}, text)
 	}
 }
 
@@ -552,14 +571,14 @@ func updateAddresses() {
 	for {
 		addrs := <-updateChans.addrs
 		glib.IdleAdd(func() {
-			RecvElems.Store.Clear()
+			RecvCoins.Store.Clear()
 		})
 		for i := range addrs {
 			addr := addrs[i]
 			glib.IdleAdd(func() {
 				var iter gtk.TreeIter
-				RecvElems.Store.Append(&iter)
-				RecvElems.Store.Set(&iter, []int{1},
+				RecvCoins.Store.Append(&iter)
+				RecvCoins.Store.Set(&iter, []int{1},
 					[]interface{}{addr})
 			})
 		}

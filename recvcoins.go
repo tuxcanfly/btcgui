@@ -23,10 +23,11 @@ import (
 	"log"
 )
 
-// RecvElems holds pointers to widgets in the receive coins tab.
-var RecvElems struct {
-	Store    *gtk.ListStore
-	Treeview *gtk.TreeView
+// RecvCoins holds pointers to widgets in the receive coins tab.
+var RecvCoins struct {
+	Store      *gtk.ListStore
+	Treeview   *gtk.TreeView
+	NewAddrBtn *gtk.Button
 }
 
 func createRecvCoins() *gtk.Widget {
@@ -34,13 +35,13 @@ func createRecvCoins() *gtk.Widget {
 	if err != nil {
 		log.Fatal(err)
 	}
-	RecvElems.Store = store
+	RecvCoins.Store = store
 
 	tv, err := gtk.TreeViewNewWithModel(store)
 	if err != nil {
 		log.Fatal(err)
 	}
-	RecvElems.Treeview = tv
+	RecvCoins.Treeview = tv
 
 	renderer, err := gtk.CellRendererTextNew()
 	if err != nil {
@@ -85,6 +86,8 @@ func createRecvCoins() *gtk.Widget {
 			triggers.newAddr <- 1
 		}()
 	})
+	newAddr.SetSensitive(false)
+	RecvCoins.NewAddrBtn = newAddr
 
 	buttons, err := gtk.GridNew()
 	if err != nil {

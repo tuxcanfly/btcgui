@@ -82,6 +82,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		}
 	})
 	dropdown.Append(mitem)
+	mitem.SetSensitive(false)
 	MenuBar.Settings.New = mitem
 
 	mitem, err = gtk.MenuItemNewWithLabel("Encrypt Wallet...")
@@ -96,6 +97,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		}
 	})
 	dropdown.Append(mitem)
+	mitem.SetSensitive(false)
 	MenuBar.Settings.Encrypt = mitem
 
 	mitem, err = gtk.MenuItemNewWithLabel("Lock wallet")
@@ -108,6 +110,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		}()
 	})
 	dropdown.Append(mitem)
+	mitem.SetSensitive(false)
 	MenuBar.Settings.Lock = mitem
 
 	mitem, err = gtk.MenuItemNewWithLabel("Unlock Wallet...")
@@ -122,6 +125,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		}
 	})
 	dropdown.Append(mitem)
+	mitem.SetSensitive(false)
 	MenuBar.Settings.Unlock = mitem
 
 	return menu

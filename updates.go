@@ -184,25 +184,34 @@ func ListenAndUpdate(c chan error) {
 				c <- ErrConnectionLost
 				return
 			}
-			var rply map[string]interface{}
-			json.Unmarshal(r, &rply)
+			var rply btcjson.Reply
+			if err := json.Unmarshal(r, &rply); err != nil {
+				log.Printf("Unable to unmarshal JSON reply: %v",
+					err)
+				continue
+			}
 
-			switch rply["id"].(type) {
+			if rply.Id == nil {
+				log.Print("Invalid JSON ID")
+				continue
+			}
+			id := *(rply.Id)
+			switch id.(type) {
 			case float64:
 				// json.Unmarshal unmarshalls all numbers as
 				// float64
-				uintID := uint64(rply["id"].(float64))
+				uintID := uint64(id.(float64))
 				replyHandlers.Lock()
 				f := replyHandlers.m[uintID]
 				delete(replyHandlers.m, uintID)
 				replyHandlers.Unlock()
 				if f != nil {
-					go f(rply["result"], rply["error"])
+					go f(rply.Result, rply.Error)
 				}
 			case string:
 				// Handle btcwallet notification.
-				go handleBtcwalletNtfn(rply["id"].(string),
-					rply["result"])
+				go handleBtcwalletNtfn(id.(string),
+					rply.Result)
 			}
 		case <-triggers.newAddr:
 			go reqNewAddr(ws)

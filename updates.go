@@ -227,14 +227,7 @@ func ListenAndUpdate(c chan error) {
 		case params := <-triggers.unlockWallet:
 			go cmdWalletPassphrase(ws, params)
 		case pairs := <-triggers.sendTx:
-			// TODO(jrick): this is just for testing the sendfrom
-			// command for now.  We'll eventually phase this out
-			// and only use sendmany.
-			if len(pairs) == 1 {
-				go cmdSendFrom(ws, pairs)
-			} else {
-				go cmdSendMany(ws, pairs)
-			}
+			go cmdSendMany(ws, pairs)
 		}
 	}
 }
@@ -547,29 +540,6 @@ func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-// tmp function, will be replaced with cmdSendMany shortly.
-func cmdSendFrom(ws *websocket.Conn, pairs map[string]float64) error {
-	seq.Lock()
-	n := seq.n
-	seq.n++
-	seq.Unlock()
-
-	// len(pairs) == 1 so this works
-	var msg []byte
-	for addr, amt := range pairs {
-		fmt.Println(addr, amt)
-		msg, _ = btcjson.CreateMessageWithId("sendfrom", n, "", addr, amt)
-	}
-
-	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		triggerReplies.sendTx <- errors.New(err.Message)
-	}
-	replyHandlers.Unlock()
-
-	return websocket.Message.Send(ws, msg)
-}
-
 // cmdSendMany requests wallet to create a new transaction to one or
 // more recipients.
 func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
@@ -586,7 +556,11 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		triggerReplies.sendTx <- errors.New(err.Message)
+		if err != nil {
+			triggerReplies.sendTx <- errors.New(err.Message)
+		} else {
+			triggerReplies.sendTx <- nil
+		}
 	}
 	replyHandlers.Unlock()
 

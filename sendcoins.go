@@ -19,6 +19,7 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"github.com/conformal/btcutil"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
@@ -247,10 +248,72 @@ func createSendCoins() *gtk.Widget {
 	submitBtn.SetHAlign(gtk.ALIGN_END)
 	submitBtn.SetHExpand(true)
 	submitBtn.SetSensitive(false)
+	submitBtn.Connect("clicked", func() {
+		sendTo := make(map[string]float64)
+		for e := recipients.Front(); e != nil; e = e.Next() {
+			r := e.Value.(*recipient)
+
+			// Get and validate address
+			addr, err := r.payTo.GetText()
+			if err != nil {
+				d := errorDialog("Error getting payment address", err.Error())
+				d.Run()
+				d.Destroy()
+				return
+			}
+			_, _, err = btcutil.DecodeAddress(addr)
+			if err != nil {
+				d := errorDialog("Invalid payment address",
+					fmt.Sprintf("'%v' is not a valid payment address", addr))
+				d.Run()
+				d.Destroy()
+				return
+			}
+			// TODO(jrick): confirm network is correct
+
+			// Get amount and units and convert to float64
+			amt := r.amount.GetValue()
+			// TODO(jrick): constify these conversions
+			switch r.combo.GetActive() {
+			case 0: // BTC
+				// nothing
+			case 1: // mBTC
+				amt /= 1000
+			case 2: // uBTC
+				amt /= 1000000
+			}
+
+			sendTo[addr] = amt
+		}
+
+		go func() {
+			triggers.sendTx <- sendTo
+
+			err := <-triggerReplies.sendTx
+			if err != nil {
+				glib.IdleAdd(func() {
+					d := errorDialog("Unable to send transaction", err.Error())
+					d.Run()
+					d.Destroy()
+				})
+				return
+			}
+			// TODO(jrick): need to think about when to clear the entries.
+			// Probably after the tx is validated and published?
+			//recipients.Init()
+		}()
+	})
 	SendCoins.SendBtn = submitBtn
 	bot.Add(submitBtn)
 
 	grid.Add(bot)
 
 	return &grid.Container.Widget
+}
+
+func errorDialog(title, msg string) *gtk.MessageDialog {
+	mDialog := gtk.MessageDialogNew(mainWindow, 0,
+		gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
+		msg)
+	return mDialog
 }

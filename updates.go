@@ -90,19 +90,23 @@ var (
 		newWallet    chan *NewWalletParams
 		lockWallet   chan int
 		unlockWallet chan *UnlockParams
+		sendTx       chan map[string]float64
 	}{
 		newAddr:      make(chan int),
 		newWallet:    make(chan *NewWalletParams),
 		lockWallet:   make(chan int),
 		unlockWallet: make(chan *UnlockParams),
+		sendTx:       make(chan map[string]float64),
 	}
 
 	triggerReplies = struct {
 		unlockSuccessful  chan bool
 		walletCreationErr chan error
+		sendTx            chan error
 	}{
 		unlockSuccessful:  make(chan bool),
 		walletCreationErr: make(chan error),
+		sendTx:            make(chan error),
 	}
 
 	walletReqFuncs = [](func(*websocket.Conn) error){
@@ -110,6 +114,7 @@ var (
 		reqBalance,
 		reqUnconfirmed,
 		reqLockState,
+		reqBtcdConnected,
 	}
 	btcdReqFuncs = [](func(*websocket.Conn) error){
 		reqProgress,
@@ -221,6 +226,15 @@ func ListenAndUpdate(c chan error) {
 			go cmdWalletLock(ws)
 		case params := <-triggers.unlockWallet:
 			go cmdWalletPassphrase(ws, params)
+		case pairs := <-triggers.sendTx:
+			// TODO(jrick): this is just for testing the sendfrom
+			// command for now.  We'll eventually phase this out
+			// and only use sendmany.
+			if len(pairs) == 1 {
+				go cmdSendFrom(ws, pairs)
+			} else {
+				go cmdSendMany(ws, pairs)
+			}
 		}
 	}
 }
@@ -465,6 +479,33 @@ func reqLockState(ws *websocket.Conn) error {
 	return websocket.Message.Send(ws, msg)
 }
 
+// reqBtcdConnected requests the current connection state of btcwallet
+// to btcd.
+func reqBtcdConnected(ws *websocket.Conn) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	m := btcjson.Message{
+		Jsonrpc: "1.0",
+		Id:      n,
+		Method:  "btcdconnected",
+		Params:  []interface{}{},
+	}
+	msg, _ := json.Marshal(&m)
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if r, ok := result.(bool); ok {
+			updateChans.btcdConnected <- r
+		}
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
 // cmdWalletLock locks the currently-opened wallet.  A reply handler
 // is not set up because the GUI will be updated after a
 // "btcwallet:newwalletlockstate" notification is sent.
@@ -500,6 +541,52 @@ func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		triggerReplies.unlockSuccessful <- err == nil
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+// tmp function, will be replaced with cmdSendMany shortly.
+func cmdSendFrom(ws *websocket.Conn, pairs map[string]float64) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	// len(pairs) == 1 so this works
+	var msg []byte
+	for addr, amt := range pairs {
+		fmt.Println(addr, amt)
+		msg, _ = btcjson.CreateMessageWithId("sendfrom", n, "", addr, amt)
+	}
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		triggerReplies.sendTx <- errors.New(err.Message)
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+// cmdSendMany requests wallet to create a new transaction to one or
+// more recipients.
+func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	// TODO(jrick): support non-default accounts
+	msg, err := btcjson.CreateMessageWithId("sendmany", n, "", pairs)
+	if err != nil {
+		return err
+	}
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		triggerReplies.sendTx <- errors.New(err.Message)
 	}
 	replyHandlers.Unlock()
 

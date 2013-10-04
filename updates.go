@@ -549,8 +549,18 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 	seq.Unlock()
 
 	// TODO(jrick): support non-default accounts
-	msg, err := btcjson.CreateMessageWithId("sendmany", n, "", pairs)
+	m := btcjson.Message{
+		Jsonrpc: "1.0",
+		Id:      n,
+		Method:  "sendmany",
+		Params: []interface{}{
+			"",
+			pairs,
+		},
+	}
+	msg, err := json.Marshal(m)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 

@@ -153,7 +153,7 @@ func createTxLabel(dir txDirection, amt float64, addr string, t time.Time) *gtk.
 			log.Fatal(err)
 		}
 
-		icon, err = gtk.ImageNewFromStock(gtk.STOCK_GO_FORWARD,
+		icon, err = gtk.ImageNewFromIconName("go-next",
 			gtk.ICON_SIZE_SMALL_TOOLBAR)
 		if err != nil {
 			log.Fatal(err)
@@ -172,7 +172,7 @@ func createTxLabel(dir txDirection, amt float64, addr string, t time.Time) *gtk.
 			log.Fatal(err)
 		}
 
-		icon, err = gtk.ImageNewFromStock(gtk.STOCK_GO_BACK,
+		icon, err = gtk.ImageNewFromIconName("go-previous",
 			gtk.ICON_SIZE_SMALL_TOOLBAR)
 		if err != nil {
 			log.Fatal(err)

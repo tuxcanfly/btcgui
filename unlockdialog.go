@@ -38,8 +38,8 @@ func createUnlockDialog() (*gtk.Dialog, error) {
 	}
 	dialog.SetTitle("Unlock wallet")
 
-	dialog.AddButton(string(gtk.STOCK_OK), gtk.RESPONSE_OK)
-	dialog.AddButton(string(gtk.STOCK_CANCEL), gtk.RESPONSE_CANCEL)
+	dialog.AddButton("_OK", gtk.RESPONSE_OK)
+	dialog.AddButton("_Cancel", gtk.RESPONSE_CANCEL)
 
 	grid, err := gtk.GridNew()
 	if err != nil {

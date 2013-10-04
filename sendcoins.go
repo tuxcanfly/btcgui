@@ -99,7 +99,7 @@ func createRecipient(rmFn func(*glib.CallbackContext)) *recipient {
 	if err != nil {
 		log.Fatal(err)
 	}
-	img, err := gtk.ImageNewFromStock(gtk.STOCK_DELETE, gtk.ICON_SIZE_MENU)
+	img, err := gtk.ImageNewFromIconName("_Delete", gtk.ICON_SIZE_MENU)
 	if err != nil {
 		log.Fatal(err)
 	}

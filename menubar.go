@@ -28,6 +28,7 @@ var (
 			New     *gtk.MenuItem
 			Encrypt *gtk.MenuItem
 			Lock    *gtk.MenuItem
+			TxFee   *gtk.MenuItem
 			Unlock  *gtk.MenuItem
 		}
 	}{}
@@ -127,6 +128,27 @@ func createSettingsMenu() *gtk.MenuItem {
 	dropdown.Append(mitem)
 	mitem.SetSensitive(false)
 	MenuBar.Settings.Unlock = mitem
+
+	sep, err := gtk.SeparatorMenuItemNew()
+	if err != nil {
+		log.Fatal(err)
+	}
+	dropdown.Append(sep)
+
+	mitem, err = gtk.MenuItemNewWithLabel("Set Transaction Fee...")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mitem.Connect("activate", func() {
+		if dialog, err := createTxFeeDialog(); err != nil {
+			log.Print(err)
+		} else {
+			dialog.Run()
+		}
+	})
+	dropdown.Append(mitem)
+	//mitem.SetSensitive(false)
+	MenuBar.Settings.TxFee = mitem
 
 	return menu
 }

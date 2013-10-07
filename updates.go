@@ -91,22 +91,26 @@ var (
 		lockWallet   chan int
 		unlockWallet chan *UnlockParams
 		sendTx       chan map[string]float64
+		setTxFee     chan float64
 	}{
 		newAddr:      make(chan int),
 		newWallet:    make(chan *NewWalletParams),
 		lockWallet:   make(chan int),
 		unlockWallet: make(chan *UnlockParams),
 		sendTx:       make(chan map[string]float64),
+		setTxFee:     make(chan float64),
 	}
 
 	triggerReplies = struct {
 		unlockSuccessful  chan bool
 		walletCreationErr chan error
 		sendTx            chan error
+		setTxFeeErr       chan error
 	}{
 		unlockSuccessful:  make(chan bool),
 		walletCreationErr: make(chan error),
 		sendTx:            make(chan error),
+		setTxFeeErr:       make(chan error),
 	}
 
 	walletReqFuncs = [](func(*websocket.Conn) error){
@@ -228,6 +232,8 @@ func ListenAndUpdate(c chan error) {
 			go cmdWalletPassphrase(ws, params)
 		case pairs := <-triggers.sendTx:
 			go cmdSendMany(ws, pairs)
+		case fee := <-triggers.setTxFee:
+			go cmdSetTxFee(ws, fee)
 		}
 	}
 }
@@ -570,6 +576,34 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 			triggerReplies.sendTx <- errors.New(err.Message)
 		} else {
 			triggerReplies.sendTx <- nil
+		}
+	}
+	replyHandlers.Unlock()
+
+	return websocket.Message.Send(ws, msg)
+}
+
+// cmdSetTxFee requests wallet to set the global transaction fee added
+// to newly-created transactions and awarded to the block miner who
+// includes the transaction.
+func cmdSetTxFee(ws *websocket.Conn, fee float64) error {
+	seq.Lock()
+	n := seq.n
+	seq.n++
+	seq.Unlock()
+
+	msg, err := btcjson.CreateMessageWithId("settxfee", n, fee)
+	if err != nil {
+		triggerReplies.setTxFeeErr <- err
+		return err // TODO(jrick): this gets thrown away so just send via triggerReplies.
+	}
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if err != nil {
+			triggerReplies.setTxFeeErr <- errors.New(err.Message)
+		} else {
+			triggerReplies.setTxFeeErr <- nil
 		}
 	}
 	replyHandlers.Unlock()

@@ -102,26 +102,28 @@ var (
 	}
 
 	triggerReplies = struct {
+		newAddrErr        chan error
 		unlockSuccessful  chan bool
 		walletCreationErr chan error
 		sendTx            chan error
 		setTxFeeErr       chan error
 	}{
+		newAddrErr:        make(chan error),
 		unlockSuccessful:  make(chan bool),
 		walletCreationErr: make(chan error),
 		sendTx:            make(chan error),
 		setTxFeeErr:       make(chan error),
 	}
 
-	walletReqFuncs = [](func(*websocket.Conn) error){
-		reqAddresses,
-		reqBalance,
-		reqUnconfirmed,
-		reqLockState,
-		reqBtcdConnected,
+	walletReqFuncs = []func(*websocket.Conn){
+		cmdGetAddressesByAccount,
+		cmdGetBalance,
+		cmdGetUnconfirmedBalance,
+		cmdWalletIsLocked,
+		cmdBtcdConnected,
 	}
-	btcdReqFuncs = [](func(*websocket.Conn) error){
-		reqProgress,
+	btcdReqFuncs = []func(*websocket.Conn){
+		cmdGetBlockCount,
 		//reqRemoteProgress,
 	}
 	updateFuncs = [](func()){
@@ -223,7 +225,7 @@ func ListenAndUpdate(c chan error) {
 					rply.Result)
 			}
 		case <-triggers.newAddr:
-			go reqNewAddr(ws)
+			go cmdGetNewAddress(ws)
 		case params := <-triggers.newWallet:
 			go cmdCreateEncryptedWallet(ws, params)
 		case <-triggers.lockWallet:
@@ -260,10 +262,17 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 	}
 }
 
-// reqNewAddr requests a new wallet address.
+// cmdGetNewAddress requests a new wallet address.
 //
 // TODO(jrick): support addresses other than the default address.
-func reqNewAddr(ws *websocket.Conn) error {
+func cmdGetNewAddress(ws *websocket.Conn) {
+	var err error
+	defer func() {
+		if err != nil {
+
+		}
+	}()
+
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -271,12 +280,18 @@ func reqNewAddr(ws *websocket.Conn) error {
 
 	msg, err := btcjson.CreateMessageWithId("getnewaddress", n, "")
 	if err != nil {
-		return err
+		triggerReplies.newAddrErr <- err
+		return
 	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		if err != nil {
+			triggerReplies.newAddrErr <- errors.New(err.Message)
+		} else {
+			triggerReplies.newAddrErr <- nil
+		}
+		/* TODO(jrick): move to reply catcher
 			glib.IdleAdd(func() {
 				mDialog := gtk.MessageDialogNew(mainWindow, 0,
 					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
@@ -294,13 +309,21 @@ func reqNewAddr(ws *websocket.Conn) error {
 					[]interface{}{"", result.(string)})
 			})
 		}
+		*/
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		triggerReplies.newAddrErr <- err
+	}
 }
 
-func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) error {
+// cmdCreateEncryptedWallet requests btcwallet to create a new wallet
+// (or account), encrypted with the supplied passphrase.
+func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -316,7 +339,11 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) error
 			params.passphrase,
 		},
 	}
-	msg, _ := json.Marshal(m)
+	msg, err := json.Marshal(m)
+	if err != nil {
+		triggerReplies.walletCreationErr <- err
+		return
+	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
@@ -334,11 +361,20 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) error
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		triggerReplies.walletCreationErr <- err
+	}
 }
 
-// reqProgress requests the blockchain height.
-func reqProgress(ws *websocket.Conn) error {
+// cmdGetBlockCount requests the current blockchain height.
+//
+// TODO(jrick): errors are not displayed, and instead the gui is
+// updated with a block height of 0.  Figure out some way to display or
+// log this error.  Switch updateChans.bcHeight to a chan interface{}?
+func cmdGetBlockCount(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -346,24 +382,39 @@ func reqProgress(ws *websocket.Conn) error {
 
 	msg, err := btcjson.CreateMessageWithId("getblockcount", n)
 	if err != nil {
-		return err
+		updateChans.bcHeight <- 0
+		return
 	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if err != nil {
+			updateChans.bcHeight <- 0
+			return
+		}
 		if r, ok := result.(float64); ok {
 			updateChans.bcHeight <- int64(r)
+		} else {
+			// result is not a number
+			updateChans.bcHeight <- 0
 		}
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		updateChans.bcHeight <- 0
+	}
 }
 
-// reqAddresses requests all addresses for an account.
+// cmdGetAddressesByAccount requests all addresses for an account.
 //
 // TODO(jrick): support addresses other than the default address.
-func reqAddresses(ws *websocket.Conn) error {
+//
+// TODO(jrick): stop throwing away errors.
+func cmdGetAddressesByAccount(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -371,7 +422,7 @@ func reqAddresses(ws *websocket.Conn) error {
 
 	msg, err := btcjson.CreateMessageWithId("getaddressesbyaccount", n, "")
 	if err != nil {
-		return err
+		updateChans.addrs <- []string{}
 	}
 
 	replyHandlers.Lock()
@@ -382,25 +433,35 @@ func reqAddresses(ws *websocket.Conn) error {
 				addrs = append(addrs, v.(string))
 			}
 			updateChans.addrs <- addrs
+		} else {
+			updateChans.addrs <- []string{}
 		}
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		updateChans.addrs <- []string{}
+	}
 }
 
-// reqBalance requests the current balance for an account.
+// cmdGetBalance requests the current balance for an account.
 //
 // TODO(jrick): support addresses other than the default address.
-func reqBalance(ws *websocket.Conn) error {
+//
+// TODO(jrick): stop throwing away errors.
+func cmdGetBalance(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
 	seq.Unlock()
 
-	msg, err := btcjson.CreateMessageWithId("getbalance", n, "", blocksForConfirmation)
+	msg, err := btcjson.CreateMessageWithId("getbalance", n, "",
+		blocksForConfirmation)
 	if err != nil {
-		return err
+		return
 	}
 
 	replyHandlers.Lock()
@@ -423,13 +484,21 @@ func reqBalance(ws *websocket.Conn) error {
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		updateChans.balance <- 0
+	}
 }
 
-// reqBalance requests the current unconfirmed balance for an account.
+// cmdGetUnconfirmedBalance requests the current unconfirmed balance for an
+// account.
 //
 // TODO(jrick): support addresses other than the default address.
-func reqUnconfirmed(ws *websocket.Conn) error {
+//
+// TODO(jrick): stop throwing away errors.
+func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -437,23 +506,33 @@ func reqUnconfirmed(ws *websocket.Conn) error {
 
 	msg, err := btcjson.CreateMessageWithId("getbalance", n, "", 0)
 	if err != nil {
-		return err
+		updateChans.unconfirmed <- 0
+		return
 	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		if r, ok := result.(float64); ok {
 			updateChans.unconfirmed <- r
+		} else {
+			updateChans.unconfirmed <- 0
 		}
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		updateChans.unconfirmed <- 0
+	}
 }
 
-// reqLockState requests the current lock state of the
+// cmdWalletIsLocked requests the current lock state of the
 // currently-opened wallet.
-func reqLockState(ws *websocket.Conn) error {
+//
+// TODO(jrick): stop throwing away errors.
+func cmdWalletIsLocked(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -465,7 +544,10 @@ func reqLockState(ws *websocket.Conn) error {
 		Method:  "walletislocked",
 		Params:  []interface{}{},
 	}
-	msg, _ := json.Marshal(&m)
+	msg, err := json.Marshal(&m)
+	if err != nil {
+		return
+	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
@@ -475,12 +557,19 @@ func reqLockState(ws *websocket.Conn) error {
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err := websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		// TODO(jrick): what to send here?
+	}
 }
 
-// reqBtcdConnected requests the current connection state of btcwallet
+// cmdBtcdConnected requests the current connection state of btcwallet
 // to btcd.
-func reqBtcdConnected(ws *websocket.Conn) error {
+//
+// TODO(jrick): stop throwing away errors.
+func cmdBtcdConnected(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
@@ -492,7 +581,10 @@ func reqBtcdConnected(ws *websocket.Conn) error {
 		Method:  "btcdconnected",
 		Params:  []interface{}{},
 	}
-	msg, _ := json.Marshal(&m)
+	msg, err := json.Marshal(&m)
+	if err != nil {
+		return
+	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
@@ -502,7 +594,12 @@ func reqBtcdConnected(ws *websocket.Conn) error {
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		// TODO(jrick): what to do here?
+	}
 }
 
 // cmdWalletLock locks the currently-opened wallet.  A reply handler

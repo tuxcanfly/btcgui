@@ -84,6 +84,23 @@ func createRecvCoins() *gtk.Widget {
 	newAddr.Connect("clicked", func() {
 		go func() {
 			triggers.newAddr <- 1
+			reply := <-triggerReplies.newAddr
+			if err, ok := reply.(error); ok {
+				glib.IdleAdd(func() {
+					mDialog := errorDialog("New address generation failed",
+						err.Error())
+					mDialog.Run()
+					mDialog.Destroy()
+
+				})
+			} else if addr, ok := reply.(string); ok {
+				glib.IdleAdd(func() {
+					var iter gtk.TreeIter
+					RecvCoins.Store.Append(&iter)
+					RecvCoins.Store.Set(&iter, []int{0, 1},
+						[]interface{}{"", addr})
+				})
+			}
 		}()
 	})
 	newAddr.SetSensitive(false)

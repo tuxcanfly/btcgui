@@ -102,13 +102,13 @@ var (
 	}
 
 	triggerReplies = struct {
-		newAddrErr        chan error
+		newAddr           chan interface{}
 		unlockSuccessful  chan bool
 		walletCreationErr chan error
 		sendTx            chan error
 		setTxFeeErr       chan error
 	}{
-		newAddrErr:        make(chan error),
+		newAddr:           make(chan interface{}),
 		unlockSuccessful:  make(chan bool),
 		walletCreationErr: make(chan error),
 		sendTx:            make(chan error),
@@ -171,7 +171,7 @@ func ListenAndUpdate(c chan error) {
 			var msg []byte
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err.Error)
 				close(replies)
 				return
 			}
@@ -179,7 +179,6 @@ func ListenAndUpdate(c chan error) {
 		}
 	}()
 
-	// TODO(jrick): don't throw away errors here
 	for _, f := range walletReqFuncs {
 		go f(ws)
 	}
@@ -264,7 +263,7 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 
 // cmdGetNewAddress requests a new wallet address.
 //
-// TODO(jrick): support addresses other than the default address.
+// TODO(jrick): support non-default accounts
 func cmdGetNewAddress(ws *websocket.Conn) {
 	var err error
 	defer func() {
@@ -280,36 +279,17 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 
 	msg, err := btcjson.CreateMessageWithId("getnewaddress", n, "")
 	if err != nil {
-		triggerReplies.newAddrErr <- err
+		triggerReplies.newAddr <- err
 		return
 	}
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		if err != nil {
-			triggerReplies.newAddrErr <- errors.New(err.Message)
-		} else {
-			triggerReplies.newAddrErr <- nil
+			triggerReplies.newAddr <- errors.New(err.Message)
+		} else if addr, ok := result.(string); ok {
+			triggerReplies.newAddr <- addr
 		}
-		/* TODO(jrick): move to reply catcher
-			glib.IdleAdd(func() {
-				mDialog := gtk.MessageDialogNew(mainWindow, 0,
-					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
-					err.Message)
-				mDialog.SetTitle("New address generation failed")
-				mDialog.Run()
-				mDialog.Destroy()
-
-			})
-		} else {
-			glib.IdleAdd(func() {
-				var iter gtk.TreeIter
-				RecvCoins.Store.Append(&iter)
-				RecvCoins.Store.Set(&iter, []int{0, 1},
-					[]interface{}{"", result.(string)})
-			})
-		}
-		*/
 	}
 	replyHandlers.Unlock()
 
@@ -317,7 +297,7 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
-		triggerReplies.newAddrErr <- err
+		triggerReplies.newAddr <- err
 	}
 }
 
@@ -663,7 +643,7 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 	}
 	msg, err := json.Marshal(m)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err.Error())
 		return err
 	}
 

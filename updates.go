@@ -171,7 +171,7 @@ func ListenAndUpdate(c chan error) {
 			var msg []byte
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
-				log.Error(err.Error)
+				log.Print(err.Error)
 				close(replies)
 				return
 			}
@@ -643,7 +643,7 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 	}
 	msg, err := json.Marshal(m)
 	if err != nil {
-		log.Error(err.Error())
+		log.Print(err.Error())
 		return err
 	}
 

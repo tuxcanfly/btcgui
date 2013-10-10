@@ -117,8 +117,8 @@ var (
 
 	walletReqFuncs = []func(*websocket.Conn){
 		cmdGetAddressesByAccount,
-		cmdGetBalance,
-		cmdGetUnconfirmedBalance,
+		cmdGetBalances,
+		cmdListAccounts,
 		cmdWalletIsLocked,
 		cmdBtcdConnected,
 	}
@@ -243,19 +243,57 @@ func ListenAndUpdate(c chan error) {
 // btcd, triggering the GUI updates associated with the notification.
 func handleBtcwalletNtfn(id string, result interface{}) {
 	switch id {
-	case "btcwallet:btcconnected":
+	// Global notifications
+	case "btcwallet:btcdconnected":
 		if r, ok := result.(bool); ok {
 			updateChans.btcdConnected <- r
 		}
-	case "btcwallet:newbalance":
-	case "btcwallet:newwalletlockstate":
-		if r, ok := result.(bool); ok {
-			updateChans.lockState <- r
-		}
+
 	case "btcwallet:newblockchainheight":
 		if r, ok := result.(float64); ok {
 			updateChans.bcHeight <- int64(r)
 		}
+
+	// Notifications per wallet (account)
+	case "btcwallet:accountbalance":
+		if r, ok := result.(map[string]interface{}); ok {
+			account, ok := r["account"].(string)
+			if !ok {
+				return
+			}
+			balance, ok := r["notification"].(float64)
+			if !ok {
+				return
+			}
+			// TODO(jrick): do proper filtering and display all
+			// account balances somewhere
+			if account == "" {
+				updateChans.balance <- balance
+			}
+		}
+
+	case "btcwallet:accountbalanceunconfirmed":
+		if r, ok := result.(map[string]interface{}); ok {
+			account, ok := r["account"].(string)
+			if !ok {
+				return
+			}
+			balance, ok := r["notification"].(float64)
+			if !ok {
+				return
+			}
+			// TODO(jrick): do proper filtering and display all
+			// account balances somewhere
+			if account == "" {
+				updateChans.unconfirmed <- balance
+			}
+		}
+
+	case "btcwallet:newwalletlockstate":
+		if r, ok := result.(bool); ok {
+			updateChans.lockState <- r
+		}
+
 	default:
 		log.Printf("Unhandled message with id '%s'\n", id)
 	}
@@ -427,19 +465,38 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 	}
 }
 
-// cmdGetBalance requests the current balance for an account.
-//
-// TODO(jrick): support addresses other than the default address.
+// cmdGetBalances requests the current account balances in the form of
+// a notification.  No reply is sent back, as the notification handler
+// should update the widgets.  We do this instead of waiting for for the
+// next notification.
 //
 // TODO(jrick): stop throwing away errors.
-func cmdGetBalance(ws *websocket.Conn) {
+func cmdGetBalances(ws *websocket.Conn) {
+	// No reply expected, so don't set a handler.
+	m := btcjson.Message{
+		Method: "getbalances",
+	}
+	msg, _ := json.Marshal(m)
+
+	if err := websocket.Message.Send(ws, msg); err != nil {
+		updateChans.balance <- 0
+		updateChans.unconfirmed <- 0
+	}
+}
+
+// cmdListAccounts requests all accounts and their balances.  This is
+// used after a websocket connection is established to add accounts to
+// the GUI, and create a wallet for the default account if it does not
+// exist.
+//
+// TODO(jrick): stop throwing away errors
+func cmdListAccounts(ws *websocket.Conn) {
 	seq.Lock()
 	n := seq.n
 	seq.n++
 	seq.Unlock()
 
-	msg, err := btcjson.CreateMessageWithId("getbalance", n, "",
-		blocksForConfirmation)
+	msg, err := btcjson.CreateMessageWithId("listaccounts", n)
 	if err != nil {
 		return
 	}
@@ -447,64 +504,35 @@ func cmdGetBalance(ws *websocket.Conn) {
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		if err != nil {
-			// TODO(jcv): move error constants to
-			// btcjson package.
-			if err.Code == -11 {
+			return
+		}
+
+		if result == nil {
+			glib.IdleAdd(func() {
+				if dialog, err := createNewWalletDialog(); err != nil {
+					dialog.Run()
+				}
+			})
+			return
+
+		}
+		if r, ok := result.(map[string]interface{}); ok {
+			if _, ok := r[""]; !ok {
+				// Default account does not exist, so open dialog to create it
 				glib.IdleAdd(func() {
 					if dialog, err := createNewWalletDialog(); err != nil {
 						dialog.Run()
 					}
 				})
 			}
-			return
-		}
-		if r, ok := result.(float64); ok {
-			updateChans.balance <- r
 		}
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, msg); err != nil {
+	if err := websocket.Message.Send(ws, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
-		updateChans.balance <- 0
-	}
-}
-
-// cmdGetUnconfirmedBalance requests the current unconfirmed balance for an
-// account.
-//
-// TODO(jrick): support addresses other than the default address.
-//
-// TODO(jrick): stop throwing away errors.
-func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
-	seq.Lock()
-	n := seq.n
-	seq.n++
-	seq.Unlock()
-
-	msg, err := btcjson.CreateMessageWithId("getbalance", n, "", 0)
-	if err != nil {
-		updateChans.unconfirmed <- 0
-		return
-	}
-
-	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		if r, ok := result.(float64); ok {
-			updateChans.unconfirmed <- r
-		} else {
-			updateChans.unconfirmed <- 0
-		}
-	}
-	replyHandlers.Unlock()
-
-	if err = websocket.Message.Send(ws, msg); err != nil {
-		replyHandlers.Lock()
-		delete(replyHandlers.m, n)
-		replyHandlers.Unlock()
-		updateChans.unconfirmed <- 0
 	}
 }
 

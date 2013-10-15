@@ -50,7 +50,7 @@ func main() {
 	w.ShowAll()
 
 	// Begin generating new IDs for JSON calls.
-	go JsonIDGenerator(NewJsonID)
+	go JSONIDGenerator(NewJSONID)
 
 	// Listen for updates and update GUI with new info.  Attempt
 	// reconnect if connection is lost or cannot be established.

@@ -47,10 +47,10 @@ var (
 )
 
 var (
-	// NewJsonID is used to receive the next unique JSON ID for
+	// NewJSONID is used to receive the next unique JSON ID for
 	// btcwallet requests, starting from zero and incrementing by one
 	// after each read.
-	NewJsonID = make(chan uint64)
+	NewJSONID = make(chan uint64)
 
 	// replyHandlers maps between a uint64 sequence id for json
 	// messages and replies, and a function to handle the returned
@@ -134,10 +134,10 @@ var (
 	}
 )
 
-// JsonIDGenerator sends incremental integers across a channel.  This
+// JSONIDGenerator sends incremental integers across a channel.  This
 // is meant to provide a unique value for the JSON ID field for btcwallet
 // messages.
-func JsonIDGenerator(c chan uint64) {
+func JSONIDGenerator(c chan uint64) {
 	var n uint64
 	for {
 		c <- n
@@ -319,7 +319,7 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 		}
 	}()
 
-	n := <-NewJsonID
+	n := <-NewJSONID
 	msg, err := btcjson.CreateMessageWithId("getnewaddress", n, "")
 	if err != nil {
 		triggerReplies.newAddr <- err
@@ -347,7 +347,7 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 // cmdCreateEncryptedWallet requests btcwallet to create a new wallet
 // (or account), encrypted with the supplied passphrase.
 func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	m := &btcjson.Message{
 		Jsonrpc: "1.0",
 		Id:      n,
@@ -394,7 +394,7 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 // updated with a block height of 0.  Figure out some way to display or
 // log this error.  Switch updateChans.bcHeight to a chan interface{}?
 func cmdGetBlockCount(ws *websocket.Conn) {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	msg, err := btcjson.CreateMessageWithId("getblockcount", n)
 	if err != nil {
 		updateChans.bcHeight <- 0
@@ -430,7 +430,7 @@ func cmdGetBlockCount(ws *websocket.Conn) {
 //
 // TODO(jrick): stop throwing away errors.
 func cmdGetAddressesByAccount(ws *websocket.Conn) {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	msg, err := btcjson.CreateMessageWithId("getaddressesbyaccount", n, "")
 	if err != nil {
 		updateChans.addrs <- []string{}
@@ -484,7 +484,7 @@ func cmdGetBalances(ws *websocket.Conn) {
 //
 // TODO(jrick): stop throwing away errors
 func cmdListAccounts(ws *websocket.Conn) {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	msg, err := btcjson.CreateMessageWithId("listaccounts", n)
 	if err != nil {
 		return
@@ -530,7 +530,7 @@ func cmdListAccounts(ws *websocket.Conn) {
 //
 // TODO(jrick): stop throwing away errors.
 func cmdWalletIsLocked(ws *websocket.Conn) {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	m := btcjson.Message{
 		Jsonrpc: "1.0",
 		Id:      n,
@@ -563,7 +563,7 @@ func cmdWalletIsLocked(ws *websocket.Conn) {
 //
 // TODO(jrick): stop throwing away errors.
 func cmdBtcdConnected(ws *websocket.Conn) {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	m := btcjson.Message{
 		Jsonrpc: "1.0",
 		Id:      n,
@@ -607,7 +607,7 @@ func cmdWalletLock(ws *websocket.Conn) error {
 // passphrase for the currently-opened wallet in memory for a given
 // number of seconds.
 func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	m := btcjson.Message{
 		Jsonrpc: "1.0",
 		Id:      n,
@@ -633,7 +633,7 @@ func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 //
 // TODO(jrick): support non-default accounts
 func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	m := btcjson.Message{
 		Jsonrpc: "1.0",
 		Id:      n,
@@ -666,7 +666,7 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 // to newly-created transactions and awarded to the block miner who
 // includes the transaction.
 func cmdSetTxFee(ws *websocket.Conn, fee float64) error {
-	n := <-NewJsonID
+	n := <-NewJSONID
 	msg, err := btcjson.CreateMessageWithId("settxfee", n, fee)
 	if err != nil {
 		triggerReplies.setTxFeeErr <- err

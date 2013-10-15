@@ -71,17 +71,23 @@ func CreateWindow() *gtk.Window {
 	}
 	notebook.AppendPage(createRecvCoins(), l)
 
-	l, err = gtk.LabelNew("Transactions")
-	if err != nil {
-		log.Fatal(err)
-	}
-	notebook.AppendPage(createTransactions(), l)
+	// TODO(jrick): Add back when transaction list is implemented.
+	/*
+		l, err = gtk.LabelNew("Transactions")
+		if err != nil {
+			log.Fatal(err)
+		}
+		notebook.AppendPage(createTransactions(), l)
+	*/
 
-	l, err = gtk.LabelNew("Address Book")
-	if err != nil {
-		log.Fatal(err)
-	}
-	notebook.AppendPage(createAddrBook(), l)
+	// TODO(jrick): Add back when address book is implemented.
+	/*
+		l, err = gtk.LabelNew("Address Book")
+		if err != nil {
+			log.Fatal(err)
+		}
+		notebook.AppendPage(createAddrBook(), l)
+	*/
 
 	grid.Add(createStatusbar())
 

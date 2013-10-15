@@ -71,13 +71,6 @@ func createWalletInfo() *gtk.Widget {
 	unconfirmed.SetHAlign(gtk.ALIGN_START)
 	grid.Attach(unconfirmed, 0, 2, 1, 1)
 
-	transactions, err := gtk.LabelNew("Number of transactions:")
-	if err != nil {
-		log.Fatal(err)
-	}
-	transactions.SetHAlign(gtk.ALIGN_START)
-	grid.Attach(transactions, 0, 3, 1, 1)
-
 	balance, err = gtk.LabelNew("")
 	if err != nil {
 		log.Fatal(err)
@@ -93,13 +86,23 @@ func createWalletInfo() *gtk.Widget {
 	grid.Attach(unconfirmed, 1, 2, 1, 1)
 	Overview.Unconfirmed = unconfirmed
 
-	transactions, err = gtk.LabelNew(strconv.Itoa(2))
-	if err != nil {
-		log.Fatal(err)
-	}
-	transactions.SetHAlign(gtk.ALIGN_START)
-	grid.Attach(transactions, 1, 3, 1, 1)
-	Overview.NTransactions = transactions
+	// TODO(jrick): Add back when transaction list is implemented.
+	/*
+		transactions, err := gtk.LabelNew("Number of transactions:")
+		if err != nil {
+			log.Fatal(err)
+		}
+		transactions.SetHAlign(gtk.ALIGN_START)
+		grid.Attach(transactions, 0, 3, 1, 1)
+
+		transactions, err = gtk.LabelNew(strconv.Itoa(2))
+		if err != nil {
+			log.Fatal(err)
+		}
+		transactions.SetHAlign(gtk.ALIGN_START)
+		grid.Attach(transactions, 1, 3, 1, 1)
+		Overview.NTransactions = transactions
+	*/
 
 	return &grid.Container.Widget
 }
@@ -205,7 +208,8 @@ func createOverview() *gtk.Widget {
 
 	grid.SetColumnHomogeneous(true)
 	grid.Add(createWalletInfo())
-	grid.Add(createTxInfo())
+	// TODO(jrick): Add back when transaction list is implemented.
+	// grid.Add(createTxInfo())
 
 	return &grid.Container.Widget
 }

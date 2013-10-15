@@ -49,6 +49,9 @@ func main() {
 	w.SetDefaultSize(800, 600)
 	w.ShowAll()
 
+	// Begin generating new IDs for JSON calls.
+	go JsonIDGenerator(NewJsonID)
+
 	// Listen for updates and update GUI with new info.  Attempt
 	// reconnect if connection is lost or cannot be established.
 	go func() {

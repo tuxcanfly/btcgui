@@ -177,7 +177,8 @@ func createMenuBar() *gtk.MenuBar {
 
 	m.Append(createFileMenu())
 	m.Append(createSettingsMenu())
-	m.Append(createHelpMenu())
+	// TODO(jrick): re-enable help menu when an About dialog is added.
+	//m.Append(createHelpMenu())
 
 	return m
 }

@@ -17,37 +17,27 @@
 package main
 
 import (
-	"github.com/conformal/go-flags"
 	"github.com/conformal/gotk3/gtk"
 	"log"
+	"os"
 	"time"
 )
 
-type options struct {
-	User     string `short:"u" long:"user" description:"rpc username"`
-	Password string `short:"p" long:"password" description:"rpc password"`
-	Server   string `short:"s" long:"server" description:"rpc server address and port"`
-}
-
-var (
-	// Defaults
-	opts = options{
-		Server: "127.0.0.1:8332",
-	}
-)
+var cfg *config
 
 func main() {
-	parser := flags.NewParser(&opts, flags.Default)
-	_, err := parser.Parse()
-	if err != nil {
-		log.Fatal("Could not read cmd line options.", err)
-	}
-
 	gtk.Init(nil)
 
 	w := CreateWindow()
 	w.SetDefaultSize(800, 600)
 	w.ShowAll()
+
+	// TODO(jrick): present warning dialog if config fails to load.
+	tcfg, _, err := loadConfig()
+	if err != nil {
+		os.Exit(1)
+	}
+	cfg = tcfg
 
 	// Begin generating new IDs for JSON calls.
 	go JSONIDGenerator(NewJSONID)

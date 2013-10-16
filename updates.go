@@ -26,6 +26,7 @@ import (
 	"github.com/conformal/gotk3/gtk"
 	"log"
 	"math"
+	"net"
 	"strconv"
 	"sync"
 )
@@ -160,11 +161,11 @@ func ListenAndUpdate(c chan error) {
 	})
 
 	// Connect to websocket.
-	// TODO(jrick): don't hardcode port
 	// TODO(jrick): use TLS
 	// TODO(jrick): http username/password?
-	ws, err := websocket.Dial("ws://localhost:8332/frontend", "",
-		"http://localhost/")
+	origin := "http://localhost/"
+	url := fmt.Sprintf("ws://%s/frontend", net.JoinHostPort("localhost", cfg.Port))
+	ws, err := websocket.Dial(url, "", origin)
 	if err != nil {
 		c <- ErrConnectionRefused
 		return

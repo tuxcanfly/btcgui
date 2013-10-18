@@ -18,7 +18,6 @@ package main
 
 import (
 	"github.com/conformal/gotk3/gtk"
-	"log"
 )
 
 var (
@@ -26,11 +25,11 @@ var (
 )
 
 // CreateWindow creates the toplevel window for the GUI.
-func CreateWindow() *gtk.Window {
+func CreateWindow() (*gtk.Window, error) {
 	var err error
 	mainWindow, err = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	mainWindow.SetTitle("btcgui")
 	mainWindow.Connect("destroy", func() {
@@ -39,7 +38,7 @@ func CreateWindow() *gtk.Window {
 
 	grid, err := gtk.GridNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.SetOrientation(gtk.ORIENTATION_VERTICAL)
 
@@ -47,7 +46,7 @@ func CreateWindow() *gtk.Window {
 
 	notebook, err := gtk.NotebookNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	notebook.SetHExpand(true)
 	notebook.SetVExpand(true)
@@ -55,19 +54,19 @@ func CreateWindow() *gtk.Window {
 
 	l, err := gtk.LabelNew("Overview")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	notebook.AppendPage(createOverview(), l)
 
 	l, err = gtk.LabelNew("Send Coins")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	notebook.AppendPage(createSendCoins(), l)
 
 	l, err = gtk.LabelNew("Receive Coins")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	notebook.AppendPage(createRecvCoins(), l)
 
@@ -93,5 +92,7 @@ func CreateWindow() *gtk.Window {
 
 	mainWindow.Add(grid)
 
-	return mainWindow
+	mainWindow.SetDefaultGeometry(800, 600)
+
+	return mainWindow, nil
 }

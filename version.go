@@ -17,10 +17,18 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
+
+// ErrNoPreviousAppVersion describes an error where no previous
+// application version was recorded.
+var ErrNoPreviousAppVersion = errors.New("no previous application version")
 
 // semanticAlphabet
 const semanticAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
@@ -37,14 +45,37 @@ const (
 	appPreRelease = "alpha"
 )
 
-// appBuild is defined as a variable so it can be overridden during the build
-// process with '-ldflags "-X main.appBuild foo' if needed.  It MUST only
-// contain characters from semanticAlphabet per the semantic versioning spec.
-var appBuild string
+// appVersionFilename describes the filename used to write the current
+// application version, and the file read at startup to determine the
+// version of the previous application run.
+const appVersionFilename = "version.txt"
+
+type appVersion struct {
+	major      uint
+	minor      uint
+	patch      uint
+	prerelease string
+	metadata   string
+}
+
+var version = appVersion{
+	major:      appMajor,
+	minor:      appMinor,
+	patch:      appPatch,
+	prerelease: appPreRelease,
+}
+
+// ParseVersion parses and returns an appVersion based on a version
+// string.
+func ParseVersion(s string) appVersion {
+	var v appVersion
+	fmt.Sscanf(s, "%d.%d.%d-%s+%s", &v.major, &v.minor, &v.patch, &v.prerelease, &v.metadata)
+	return v
+}
 
 // version returns the application version as a properly formed string per the
 // semantic versioning 2.0.0 spec (http://semver.org/).
-func version() string {
+func (v appVersion) String() string {
 	// Start with the major, minor, and path versions.
 	version := fmt.Sprintf("%d.%d.%d", appMajor, appMinor, appPatch)
 
@@ -69,6 +100,71 @@ func version() string {
 	return version
 }
 
+// NewerThan tests whether an application version v is newer than a a
+// second version v2.
+func (v appVersion) NewerThan(v2 appVersion) bool {
+	switch {
+	case v.major > v2.major:
+		return true
+	case v.major < v2.major:
+		return false
+	case v.minor > v2.minor:
+		return true
+	case v.minor < v2.minor:
+		return false
+	case v.patch > v2.patch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Equal tests whether two application versions are equal.
+func (v appVersion) Equal(v2 appVersion) bool {
+	switch {
+	case v.major != v2.major, v.minor != v2.minor, v.patch != v2.patch:
+		return false
+	default:
+		return true
+	}
+}
+
+// SaveToDataDir writes the current application version string to
+// the version file so it can be read on a future application run.
+func (v appVersion) SaveToDataDir(cfg *config) error {
+	// TODO(jrick): when home dir becomes a config option, use correct
+	// directory.
+	hdir := btcguiHomeDir()
+	fi, err := os.Stat(hdir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Attempt data directory creation
+			if err = os.MkdirAll(hdir, 0700); err != nil {
+				return fmt.Errorf("cannot create data directory: %s", err)
+			}
+		} else {
+			return fmt.Errorf("error checking data directory: %s", err)
+		}
+	} else {
+		if !fi.IsDir() {
+			return fmt.Errorf("data directory '%s' is not a directory", hdir)
+		}
+	}
+
+	filename := filepath.Join(hdir, appVersionFilename)
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(file, "%s\n", v.String())
+	return err
+}
+
+// appBuild is defined as a variable so it can be overridden during the build
+// process with '-ldflags "-X main.appBuild foo' if needed.  It MUST only
+// contain characters from semanticAlphabet per the semantic versioning spec.
+var appBuild string
+
 // normalizeVerString returns the passed string stripped of all characters which
 // are not valid according to the semantic versioning guidelines for pre-release
 // version and build metadata strings.  In particular they MUST only contain
@@ -81,4 +177,29 @@ func normalizeVerString(str string) string {
 		}
 	}
 	return result.String()
+}
+
+// GetPreviousAppVersion returns the previously recorded application
+// version, or ErrNoPreviousAppVersion if no version was recorded.
+func GetPreviousAppVersion(cfg *config) (*appVersion, error) {
+	// TODO(jrick): when home dir becomes a config option, use correct
+	// directory.
+	hdir := btcguiHomeDir()
+	filename := filepath.Join(hdir, appVersionFilename)
+	if !fileExists(filename) {
+		return nil, ErrNoPreviousAppVersion
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	filebuf := bufio.NewReader(file)
+	line, err := filebuf.ReadBytes('\n')
+	if err != nil {
+		return nil, err
+	}
+	verstr := string(line)
+	ver := ParseVersion(verstr)
+	return &ver, nil
+
 }

@@ -154,19 +154,31 @@ func createSettingsMenu() *gtk.MenuItem {
 }
 
 func createHelpMenu() *gtk.MenuItem {
-	mitem, err := gtk.MenuItemNewWithMnemonic("_Help")
+	menu, err := gtk.MenuItemNewWithMnemonic("_Help")
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	dropdown, err := gtk.MenuNew()
 	if err != nil {
 		log.Fatal(err)
 	}
+	menu.SetSubmenu(dropdown)
 
-	mitem.SetSubmenu(dropdown)
+	mitem, err := gtk.MenuItemNewWithLabel("Tutorial...")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mitem.Connect("activate", func() {
+		w, err := CreateTutorialDialog(mainWindow)
+		if err != nil {
+			// TODO(jrick): Log error to file.
+			log.Fatal(err)
+		}
+		w.ShowAll()
+	})
+	dropdown.Append(mitem)
 
-	return mitem
+	return menu
 }
 
 func createMenuBar() *gtk.MenuBar {
@@ -177,8 +189,7 @@ func createMenuBar() *gtk.MenuBar {
 
 	m.Append(createFileMenu())
 	m.Append(createSettingsMenu())
-	// TODO(jrick): re-enable help menu when an About dialog is added.
-	//m.Append(createHelpMenu())
+	m.Append(createHelpMenu())
 
 	return m
 }

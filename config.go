@@ -122,7 +122,7 @@ func loadConfig() (*config, []string, error) {
 	if preCfg.ShowVersion {
 		appName := filepath.Base(os.Args[0])
 		appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-		fmt.Println(appName, "version", version())
+		fmt.Println(appName, "version", version)
 		os.Exit(0)
 	}
 

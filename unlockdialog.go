@@ -31,7 +31,15 @@ type UnlockParams struct {
 const unlockMessage = "Enter the wallet passphrase and a timeout in seconds.\n" +
 	"The wallet will automatically lock after the timeout has expired."
 
-func createUnlockDialog() (*gtk.Dialog, error) {
+// createUnlockDialog creates a dialog to enter a passphrase and unlock
+// an encrypted wallet.  If an OK response is received, the passphrase will
+// be used to attempt a wallet unlock.
+//
+// If success is non-nil, the caller may pass in a channel to receive a
+// notification for whether the unlock was successful.  If the dialog is
+// closed without sending a request to btcwallet and the channel is
+// non-nil, the channel is closed.
+func createUnlockDialog(success chan bool) (*gtk.Dialog, error) {
 	dialog, err := gtk.DialogNew()
 	if err != nil {
 		return nil, err
@@ -117,10 +125,16 @@ func createUnlockDialog() (*gtk.Dialog, error) {
 				}
 
 				if ok := <-triggerReplies.unlockSuccessful; ok {
+					if success != nil {
+						success <- true
+					}
 					glib.IdleAdd(func() {
 						dialog.Destroy()
 					})
 				} else {
+					if success != nil {
+						success <- false
+					}
 					glib.IdleAdd(func() {
 						mDialog := gtk.MessageDialogNew(dialog, 0,
 							gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
@@ -132,6 +146,9 @@ func createUnlockDialog() (*gtk.Dialog, error) {
 				}
 			}()
 		case gtk.RESPONSE_CANCEL:
+			if success != nil {
+				close(success)
+			}
 			dialog.Destroy()
 		}
 	})

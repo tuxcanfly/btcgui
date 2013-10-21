@@ -300,8 +300,11 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 		}
 
 	case "btcwallet:newwalletlockstate":
-		if r, ok := result.(bool); ok {
-			updateChans.lockState <- r
+		if m, ok := result.(map[string]interface{}); ok {
+			// We only care about the default account right now.
+			if m["account"].(string) == "" {
+				updateChans.lockState <- m["notification"].(bool)
+			}
 		}
 
 	default:
@@ -653,8 +656,9 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		if err != nil {
-			triggerReplies.sendTx <- errors.New(err.Message)
+			triggerReplies.sendTx <- err
 		} else {
+			// success
 			triggerReplies.sendTx <- nil
 		}
 	}
@@ -677,8 +681,9 @@ func cmdSetTxFee(ws *websocket.Conn, fee float64) error {
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
 		if err != nil {
-			triggerReplies.setTxFeeErr <- errors.New(err.Message)
+			triggerReplies.setTxFeeErr <- err
 		} else {
+			// success
 			triggerReplies.setTxFeeErr <- nil
 		}
 	}

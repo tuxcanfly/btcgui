@@ -119,7 +119,7 @@ func createSettingsMenu() *gtk.MenuItem {
 		log.Fatal(err)
 	}
 	mitem.Connect("activate", func() {
-		if dialog, err := createUnlockDialog(); err != nil {
+		if dialog, err := createUnlockDialog(nil); err != nil {
 			log.Print(err)
 		} else {
 			dialog.Run()

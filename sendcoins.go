@@ -19,7 +19,9 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
+	"github.com/conformal/btcwire"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
@@ -39,8 +41,9 @@ var (
 
 	// SendCoins holds pointers to widgets in the send coins tab.
 	SendCoins = struct {
-		Balance *gtk.Label
-		SendBtn *gtk.Button
+		Balance   *gtk.Label
+		SendBtn   *gtk.Button
+		EntryGrid *gtk.Grid
 	}{}
 )
 
@@ -214,6 +217,7 @@ func createSendCoins() *gtk.Widget {
 	if err != nil {
 		log.Fatal(err)
 	}
+	SendCoins.EntryGrid = entriesGrid
 	entriesGrid.SetOrientation(gtk.ORIENTATION_VERTICAL)
 	sw.Add(entriesGrid)
 	insertSendEntries(entriesGrid)
@@ -261,7 +265,7 @@ func createSendCoins() *gtk.Widget {
 				d.Destroy()
 				return
 			}
-			_, _, err = btcutil.DecodeAddress(addr)
+			_, net, err := btcutil.DecodeAddress(addr)
 			if err != nil {
 				d := errorDialog("Invalid payment address",
 					fmt.Sprintf("'%v' is not a valid payment address", addr))
@@ -269,7 +273,24 @@ func createSendCoins() *gtk.Widget {
 				d.Destroy()
 				return
 			}
-			// TODO(jrick): confirm network is correct
+			switch net {
+			case btcwire.MainNet:
+				if !cfg.MainNet {
+					d := errorDialog("Invalid payment address",
+						fmt.Sprintf("'%v' is a mainnet address", addr))
+					d.Run()
+					d.Destroy()
+					return
+				}
+			case btcwire.TestNet3:
+				if cfg.MainNet {
+					d := errorDialog("Invalid payment address",
+						fmt.Sprintf("'%v' is a testnet address", addr))
+					d.Run()
+					d.Destroy()
+					return
+				}
+			}
 
 			// Get amount and units and convert to float64
 			amt := r.amount.GetValue()
@@ -286,22 +307,7 @@ func createSendCoins() *gtk.Widget {
 			sendTo[addr] = amt
 		}
 
-		go func() {
-			triggers.sendTx <- sendTo
-
-			err := <-triggerReplies.sendTx
-			if err != nil {
-				glib.IdleAdd(func() {
-					d := errorDialog("Unable to send transaction", err.Error())
-					d.Run()
-					d.Destroy()
-				})
-				return
-			}
-			// TODO(jrick): need to think about when to clear the entries.
-			// Probably after the tx is validated and published?
-			//recipients.Init()
-		}()
+		go txSenderAndReplyListener(sendTo)
 	})
 	SendCoins.SendBtn = submitBtn
 	bot.Add(submitBtn)
@@ -311,9 +317,85 @@ func createSendCoins() *gtk.Widget {
 	return &grid.Container.Widget
 }
 
+// txSenderAndReplyListener triggers btcgui to send btcwallet a JSON
+// request to create and send a transaction.  If sending the transaction
+// succeeds, the recipients in the send coins notebook tab are cleared.
+// If the transaction fails because the wallet is not unlocked, the
+// unlock dialog is shown, and after a successful unlock, creating and
+// sending the tx is tried a second time.
+//
+// This is written to be run as a goroutine executing outside of the GTK
+// main event loop.
+func txSenderAndReplyListener(sendTo map[string]float64) {
+	triggers.sendTx <- sendTo
+
+	err := <-triggerReplies.sendTx
+	// -13 is the error code for needing an unlocked wallet.
+	if jsonErr, ok := err.(*btcjson.Error); ok {
+		switch jsonErr.Code {
+		case -13:
+			// Wallet must be unlocked first.  Show unlock dialog.
+			glib.IdleAdd(func() {
+				unlockSuccessful := make(chan bool)
+				go func() {
+					for {
+						success, ok := <-unlockSuccessful
+						if !ok {
+							// A closed channel indicates
+							// the dialog was cancelled.
+							// Abort sending the transaction.
+							return
+						}
+						if success {
+							// Try send again.
+							go txSenderAndReplyListener(sendTo)
+							return
+						}
+					}
+				}()
+				d, err := createUnlockDialog(unlockSuccessful)
+				if err != nil {
+					// TODO(jrick): log error to file
+					log.Printf("[ERR] could not create unlock dialog: %v\n", err)
+					return
+				}
+				d.Run()
+				d.Destroy()
+			})
+
+		default:
+			// Generic case to display an error.
+			glib.IdleAdd(func() {
+				d := errorDialog("Unable to send transaction",
+					fmt.Sprintf("%s\nError code: %d", jsonErr.Message, jsonErr.Code))
+				d.Run()
+				d.Destroy()
+			})
+		}
+		return
+	}
+
+	// Send was successful, so clear recipient widgets.
+	glib.IdleAdd(resetRecipients)
+}
+
+// resetRecipients resets the recipients list and widgets in the send
+// coins tab to a single empty recipient.
+//
+// This must be run from the GTK main event loop.
+func resetRecipients() {
+	for e := recipients.Front(); e != nil; e = e.Next() {
+		r := e.Value.(*recipient)
+		r.Widget.Destroy()
+	}
+	recipients.Init()
+	insertSendEntries(SendCoins.EntryGrid)
+}
+
 func errorDialog(title, msg string) *gtk.MessageDialog {
 	mDialog := gtk.MessageDialogNew(mainWindow, 0,
 		gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
 		msg)
+	mDialog.SetTitle(title)
 	return mDialog
 }

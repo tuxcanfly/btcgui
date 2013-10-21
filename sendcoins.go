@@ -79,16 +79,11 @@ func createRecipient(rmFn func(*glib.CallbackContext)) *recipient {
 		log.Fatal(err)
 	}
 	grid.Attach(l, 0, 0, 1, 1)
-	l, err = gtk.LabelNew("Label:")
-	if err != nil {
-		log.Fatal(err)
-	}
-	grid.Attach(l, 0, 1, 1, 1)
 	l, err = gtk.LabelNew("Amount:")
 	if err != nil {
 		log.Fatal(err)
 	}
-	grid.Attach(l, 0, 2, 1, 1)
+	grid.Attach(l, 0, 1, 1, 1)
 
 	payTo, err := gtk.EntryNew()
 	if err != nil {
@@ -111,13 +106,22 @@ func createRecipient(rmFn func(*glib.CallbackContext)) *recipient {
 	remove.ConnectWithData("clicked", rmFn, ret)
 	grid.Attach(remove, 2, 0, 1, 1)
 
-	label, err := gtk.EntryNew()
-	if err != nil {
-		log.Fatal(err)
-	}
-	label.SetHExpand(true)
-	ret.label = label
-	grid.Attach(label, 1, 1, 2, 1)
+	// TODO(jrick): Label doens't do anything currently, so don't add
+	// to gui.
+	/*
+		l, err = gtk.LabelNew("Label:")
+		if err != nil {
+			log.Fatal(err)
+		}
+		grid.Attach(l, 0, 1, 1, 1)
+		label, err := gtk.EntryNew()
+		if err != nil {
+			log.Fatal(err)
+		}
+		label.SetHExpand(true)
+		ret.label = label
+		grid.Attach(label, 1, 1, 2, 1)
+	*/
 
 	amounts, err := gtk.GridNew()
 	if err != nil {
@@ -179,7 +183,7 @@ func createRecipient(rmFn func(*glib.CallbackContext)) *recipient {
 	ret.combo = combo
 	amounts.Add(combo)
 
-	grid.Attach(amounts, 1, 2, 1, 1)
+	grid.Attach(amounts, 1, 1, 1, 1)
 
 	return ret
 }

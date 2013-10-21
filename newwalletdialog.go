@@ -37,7 +37,6 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	dialog.SetTitle("New wallet")
 
 	dialog.AddButton("_OK", gtk.RESPONSE_OK)
-	dialog.AddButton("_Cancel", gtk.RESPONSE_CANCEL)
 
 	grid, err := gtk.GridNew()
 	if err != nil {

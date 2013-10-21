@@ -25,7 +25,7 @@ var (
 	// MenuBar holds pointers to various items in the menu.
 	MenuBar = struct {
 		Settings struct {
-			New     *gtk.MenuItem
+			//New     *gtk.MenuItem
 			Encrypt *gtk.MenuItem
 			Lock    *gtk.MenuItem
 			TxFee   *gtk.MenuItem
@@ -71,22 +71,27 @@ func createSettingsMenu() *gtk.MenuItem {
 	}
 	menu.SetSubmenu(dropdown)
 
-	mitem, err := gtk.MenuItemNewWithLabel("New Wallet...")
-	if err != nil {
-		log.Fatal(err)
-	}
-	mitem.Connect("activate", func() {
-		if dialog, err := createNewWalletDialog(); err != nil {
-			log.Print(err)
-		} else {
-			dialog.Run()
+	// TODO(jrick): Dialog will be shown on first start and cannot be
+	// cancled out of anymore, so disable this until multi-account
+	// support is added.
+	/*
+		mitem, err := gtk.MenuItemNewWithLabel("New Wallet...")
+		if err != nil {
+			log.Fatal(err)
 		}
-	})
-	dropdown.Append(mitem)
-	mitem.SetSensitive(false)
-	MenuBar.Settings.New = mitem
+		mitem.Connect("activate", func() {
+			if dialog, err := createNewWalletDialog(); err != nil {
+				log.Print(err)
+			} else {
+				dialog.Run()
+			}
+		})
+		dropdown.Append(mitem)
+		mitem.SetSensitive(false)
+		MenuBar.Settings.New = mitem
+	*/
 
-	mitem, err = gtk.MenuItemNewWithLabel("Encrypt Wallet...")
+	mitem, err := gtk.MenuItemNewWithLabel("Encrypt Wallet...")
 	if err != nil {
 		log.Fatal(err)
 	}

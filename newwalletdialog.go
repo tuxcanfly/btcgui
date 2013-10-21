@@ -89,6 +89,17 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	})
 	grid.Attach(repeated, 1, 1, 1, 1)
 
+	showEntryText, err := gtk.CheckButtonNewWithLabel("Show passphrases")
+	if err != nil {
+		return nil, err
+	}
+	showEntryText.Connect("toggled", func() {
+		active := showEntryText.GetActive()
+		passphrase.SetVisibility(active)
+		repeated.SetVisibility(active)
+	})
+	grid.Attach(showEntryText, 0, 2, 2, 1)
+
 	dialog.SetTransientFor(mainWindow)
 	dialog.SetPosition(gtk.WIN_POS_CENTER_ON_PARENT)
 	dialog.ShowAll()

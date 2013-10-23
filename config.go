@@ -29,6 +29,7 @@ import (
 const (
 	defaultConfigFilename = "btcgui.conf"
 	defaultBtcNet         = btcwire.TestNet3
+	minPassphraseLength   = 10
 )
 
 var (

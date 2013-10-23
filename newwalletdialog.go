@@ -74,6 +74,8 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	}
 	grid.SetHExpand(true)
 	grid.SetVExpand(true)
+	grid.SetRowHomogeneous(true)
+
 	b, err := dialog.GetContentArea()
 	if err != nil {
 		return nil, err
@@ -115,7 +117,6 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 		return nil, err
 	}
 	l.SetAlignment(gtk.ALIGN_END, 0.5)
-	l.SetVExpand(true)
 	grid.Attach(l, 0, 2, 1, 1)
 
 	repeated, err := gtk.EntryNew()

@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
@@ -30,43 +29,29 @@ type NewWalletParams struct {
 	passphrase string
 }
 
+const newWalletMessage = "Before creating a new wallet, a passphrase " +
+	"must be entered.  This passhprase will be used to encrypt " +
+	"wallet private keys, and will be required before transactions " +
+	"can be created from your wallet.\n" +
+	"\n" +
+	"A strong passphrase is highly recommended.  Choosing an easily " +
+	"guessable passphrase increases the likeliness of a successful " +
+	"brute force attack.\n" +
+	"\n" +
+	"<span weight=\"bold\" fgcolor=\"red\">WARNING:</span> Do not " +
+	"lose or forget this passphrase, or your Bitcoins will be " +
+	"unspendable."
+
 func createNewWalletDialog() (*gtk.Dialog, error) {
 	dialog, err := gtk.DialogNew()
 	if err != nil {
 		return nil, err
 	}
 	dialog.SetTitle("New wallet")
+
 	dialog.AddButton("_OK", gtk.RESPONSE_OK)
-	dialog.SetDefaultGeometry(400, 100)
 
-	frame, err := gtk.FrameNew("New Wallet")
-	if err != nil {
-		return nil, err
-	}
-
-	box, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 10)
-	if err != nil {
-		return nil, err
-	}
-	frame.Add(box)
-
-	msg := fmt.Sprintf("Before creating a new wallet, a passphrase containing a "+
-		"minimum of %d characters must be entered.  This passphrase "+
-		"will encrypt the private keys the wallet holds.", minPassphraseLength)
-	l, err := gtk.LabelNew("")
-	if err != nil {
-		return nil, err
-	}
-	l.SetJustify(gtk.JUSTIFY_FILL)
-	l.SetMarkup(msg)
-	l.SetLineWrap(true)
-	box.Add(l)
-
-	sep, err := gtk.SeparatorNew(gtk.ORIENTATION_HORIZONTAL)
-	if err != nil {
-		return nil, err
-	}
-	box.Add(sep)
+	dialog.SetDefaultGeometry(500, 100)
 
 	grid, err := gtk.GridNew()
 	if err != nil {
@@ -74,31 +59,37 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	}
 	grid.SetHExpand(true)
 	grid.SetVExpand(true)
-	grid.SetRowHomogeneous(true)
 
 	b, err := dialog.GetContentArea()
 	if err != nil {
 		return nil, err
 	}
-	box.Add(grid)
+	b.Add(grid)
 
-	b.Add(frame)
-	b.SetHExpand(true)
-	b.SetVExpand(true)
+	// Because the label will wrap and the final minimum heights
+	// and widths will be absurdly large, first give a size request and
+	// show the grid (allocating space for the requested size).  This will
+	// make text wrapping labels size nicely inside the grid.
+	grid.SetSizeRequest(500, 100)
+	grid.Show()
 
-	l, err = gtk.LabelNew("")
+	l, err := gtk.LabelNew("")
 	if err != nil {
 		return nil, err
 	}
-	msg = "<span weight=\"bold\" fgcolor=\"red\">DO NOT FORGET THIS PASSPHRASE</span>"
-	l.SetMarkup(msg)
-	grid.Attach(l, 1, 0, 1, 1)
+	l.SetLineWrap(true)
+	l.SetMarkup(newWalletMessage)
+	l.SetAlignment(0, 0)
+	grid.Attach(l, 0, 0, 2, 1)
+
+	b.SetHExpand(true)
+	b.SetVExpand(true)
 
 	l, err = gtk.LabelNew("Enter passphrase:")
 	if err != nil {
 		return nil, err
 	}
-	l.SetAlignment(gtk.ALIGN_END, 0.5)
+	l.SetAlignment(gtk.ALIGN_END, gtk.ALIGN_CENTER)
 	grid.Attach(l, 0, 1, 1, 1)
 
 	passphrase, err := gtk.EntryNew()
@@ -116,7 +107,7 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.SetAlignment(gtk.ALIGN_END, 0.5)
+	l.SetAlignment(gtk.ALIGN_END, gtk.ALIGN_CENTER)
 	grid.Attach(l, 0, 2, 1, 1)
 
 	repeated, err := gtk.EntryNew()
@@ -124,7 +115,6 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 		return nil, err
 	}
 	repeated.SetVisibility(false)
-	repeated.SetVExpand(true)
 	repeated.SetVAlign(gtk.ALIGN_START)
 	repeated.Connect("activate", func() {
 		dialog.Emit("response", gtk.RESPONSE_OK, nil)
@@ -159,15 +149,14 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 				log.Print(err)
 				return
 			}
-			if len(pStr) < minPassphraseLength {
-				msg := fmt.Sprintf("The supplied passphrase must be at least %d characters.",
-					minPassphraseLength)
+			if len(pStr) == 0 {
 				mDialog := gtk.MessageDialogNew(dialog, 0,
-					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
-				mDialog.SetTitle("Wallet encryption failed")
+					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
+					"A passphrase must be entered to create a wallet.")
+				mDialog.SetTitle("Wallet creation failed")
 				mDialog.Run()
 				mDialog.Destroy()
-				break
+				return
 			}
 			if pStr == rStr {
 				go func() {
@@ -196,13 +185,23 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 				msg := "The supplied passphrases do not match."
 				mDialog := gtk.MessageDialogNew(dialog, 0,
 					gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
-				mDialog.SetTitle("Wallet encryption failed")
+				mDialog.SetTitle("Wallet creation failed")
 				mDialog.Run()
 				mDialog.Destroy()
 			}
 		case gtk.RESPONSE_CANCEL:
 			dialog.Destroy()
 		}
+	})
+
+	dialog.Connect("destroy", func() {
+		mDialog := gtk.MessageDialogNew(mainWindow, 0,
+			gtk.MESSAGE_INFO, gtk.BUTTONS_OK,
+			"btcgui cannot be used without a wallet and will now close.")
+		mDialog.Show()
+		mDialog.Run()
+		mDialog.Destroy()
+		gtk.MainQuit()
 	})
 
 	return dialog, nil

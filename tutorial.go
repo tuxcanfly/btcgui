@@ -32,15 +32,18 @@ const (
 		"rest of the tutorial.\n"
 
 	disclaimerText = "<b>Disclaimer</b>\n" +
-		"\n" +
-		"btcgui is still alpha-level software and is not yet ready " +
-		"to replace other Bitcoin wallet software.\n" +
+		"btcgui is still alpha-level development software and is " +
+		"not yet ready to replace other Bitcoin wallet software.\n" +
 		"\n" +
 		"Running btcgui on the main Bitcoin network is currently " +
 		"disabled until the software has matured.  Instead, btcgui " +
 		"alpha operates on the Bitcoin test network (version 3). " +
 		"Support for the main Bitcoin network will be enabled in " +
-		"future versions when ready."
+		"future versions when ready.\n" +
+		"\n" +
+		"btcgui is primarly written as a Unix GUI, and will be rough " +
+		"around the edges on other platforms.  Development of native " +
+		"applications for other platforms is planned for the future."
 
 	connectText = "<b>Multiprocess Wallet Design</b>\n" +
 		"\n" +

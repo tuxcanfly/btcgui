@@ -720,7 +720,7 @@ func updateConnectionState() {
 			if conn {
 				glib.IdleAdd(func() {
 					//MenuBar.Settings.New.SetSensitive(true)
-					MenuBar.Settings.Encrypt.SetSensitive(true)
+					//MenuBar.Settings.Encrypt.SetSensitive(true)
 					MenuBar.Settings.TxFee.SetSensitive(true)
 					// Lock/Unlock sensitivity is set by wallet notification.
 					RecvCoins.NewAddrBtn.SetSensitive(true)
@@ -730,7 +730,7 @@ func updateConnectionState() {
 			} else {
 				glib.IdleAdd(func() {
 					//MenuBar.Settings.New.SetSensitive(false)
-					MenuBar.Settings.Encrypt.SetSensitive(false)
+					//MenuBar.Settings.Encrypt.SetSensitive(false)
 					MenuBar.Settings.Lock.SetSensitive(false)
 					MenuBar.Settings.Unlock.SetSensitive(false)
 					MenuBar.Settings.TxFee.SetSensitive(false)

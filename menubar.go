@@ -26,10 +26,10 @@ var (
 	MenuBar = struct {
 		Settings struct {
 			//New     *gtk.MenuItem
-			Encrypt *gtk.MenuItem
-			Lock    *gtk.MenuItem
-			TxFee   *gtk.MenuItem
-			Unlock  *gtk.MenuItem
+			//Encrypt *gtk.MenuItem
+			Lock   *gtk.MenuItem
+			TxFee  *gtk.MenuItem
+			Unlock *gtk.MenuItem
 		}
 	}{}
 )
@@ -91,22 +91,27 @@ func createSettingsMenu() *gtk.MenuItem {
 		MenuBar.Settings.New = mitem
 	*/
 
-	mitem, err := gtk.MenuItemNewWithLabel("Encrypt Wallet...")
-	if err != nil {
-		log.Fatal(err)
-	}
-	mitem.Connect("activate", func() {
-		if dialog, err := createEncryptionDialog(); err != nil {
-			log.Print(err)
-		} else {
-			dialog.Run()
+	// TODO(jrick): Wallet is already encrypted, but we can possibly use
+	// this code for a second level of encryption later that will encrypt
+	// everything, not just private keys.
+	/*
+		mitem, err := gtk.MenuItemNewWithLabel("Encrypt Wallet...")
+		if err != nil {
+			log.Fatal(err)
 		}
-	})
-	dropdown.Append(mitem)
-	mitem.SetSensitive(false)
-	MenuBar.Settings.Encrypt = mitem
+		mitem.Connect("activate", func() {
+			if dialog, err := createEncryptionDialog(); err != nil {
+				log.Print(err)
+			} else {
+				dialog.Run()
+			}
+		})
+		dropdown.Append(mitem)
+		mitem.SetSensitive(false)
+		MenuBar.Settings.Encrypt = mitem
+	*/
 
-	mitem, err = gtk.MenuItemNewWithLabel("Lock wallet")
+	mitem, err := gtk.MenuItemNewWithLabel("Lock wallet")
 	if err != nil {
 		log.Fatal(err)
 	}

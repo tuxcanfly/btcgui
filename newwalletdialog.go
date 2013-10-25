@@ -194,7 +194,7 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 		}
 	})
 
-	dialog.Connect("destroy", func() {
+	dialog.Connect("delete-event", func() {
 		mDialog := gtk.MessageDialogNew(mainWindow, 0,
 			gtk.MESSAGE_INFO, gtk.BUTTONS_OK,
 			"btcgui cannot be used without a wallet and will now close.")

@@ -44,10 +44,9 @@ $ go get -u -v github.com/conformal/btcwallet/...
 $ go get -u -v github.com/conformal/btcgui/...
 ```
 
-- btcd and btcwallet will now be installed in either ```$GOROOT/bin``` or
-  ```$GOPATH/bin``` depending on your configuration.  If you did not already
+- btcd, btcwallet, and btcgui will now be installed in either ```$GOROOT/bin```
+  or ```$GOPATH/bin``` depending on your configuration.  If you did not already
   add to your system path during the installation, we recommend you do so now.
-
 
 ## Updating
 
@@ -59,7 +58,7 @@ https://github.com/conformal/btcd/releases
 
 ### Linux/BSD/POSIX - Build from Source
 
-- Run the following commands to update btcwallet, all dependencies, and install it:
+- Run the following commands to update btcgui, all dependencies, and install it:
 
 ```bash
 $ go get -u -v github.com/conformal/btcd/...
@@ -67,7 +66,7 @@ $ go get -u -v github.com/conformal/btcwallet/...
 $ go get -u -v github.com/conformal/btcgui/...
 ```
 
-Remember to specify the correct build tags when building btcgui.
+Remember to specify the correct GoTK3 build tags when building btcgui.
 
 ## Getting Started
 

@@ -68,7 +68,7 @@ Remember to specify the correct GoTK3 build tags when building btcgui.
 
 ### Windows (Installed from MSI)
 
-Open btcdsuite.bat from the Btcd Suite folder in the Start Menu.
+Open ```Btcd Suite``` from the ```Btcd Suite``` folder in the Start Menu.
 
 ### Linux/BSD/POSIX/Source
 

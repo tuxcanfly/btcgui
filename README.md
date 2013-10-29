@@ -11,10 +11,6 @@ This project is currently under active development is not production
 ready yet.  Because of this, support for connecting to a mainnet
 btcwallet is currently disable, and testnet must be used instead.
 
-Do not expect anything to work properly.  However, feel
-free to poke through the source, especially if you are looking for an
-example of a real, modern GUI application written using gotk3.
-
 ## Installation
 
 ### Windows - MSI Available

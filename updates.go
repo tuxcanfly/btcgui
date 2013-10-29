@@ -116,14 +116,7 @@ var (
 
 	walletReqFuncs = []func(*websocket.Conn){
 		cmdGetAddressesByAccount,
-		cmdGetBalances,
-		cmdListAccounts,
 		cmdWalletIsLocked,
-		cmdBtcdConnected,
-	}
-	btcdReqFuncs = []func(*websocket.Conn){
-		cmdGetBlockCount,
-		//reqRemoteProgress,
 	}
 	updateFuncs = [](func()){
 		updateAddresses,
@@ -190,9 +183,6 @@ func ListenAndUpdate(c chan error) {
 	}()
 
 	for _, f := range walletReqFuncs {
-		go f(ws)
-	}
-	for _, f := range btcdReqFuncs {
 		go f(ws)
 	}
 
@@ -392,42 +382,6 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 	}
 }
 
-// cmdGetBlockCount requests the current blockchain height.
-//
-// TODO(jrick): errors are not displayed, and instead the gui is
-// updated with a block height of 0.  Figure out some way to display or
-// log this error.  Switch updateChans.bcHeight to a chan interface{}?
-func cmdGetBlockCount(ws *websocket.Conn) {
-	n := <-NewJSONID
-	msg, err := btcjson.CreateMessageWithId("getblockcount", n)
-	if err != nil {
-		updateChans.bcHeight <- 0
-		return
-	}
-
-	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		if err != nil {
-			updateChans.bcHeight <- 0
-			return
-		}
-		if r, ok := result.(float64); ok {
-			updateChans.bcHeight <- int64(r)
-		} else {
-			// result is not a number
-			updateChans.bcHeight <- 0
-		}
-	}
-	replyHandlers.Unlock()
-
-	if err = websocket.Message.Send(ws, msg); err != nil {
-		replyHandlers.Lock()
-		delete(replyHandlers.m, n)
-		replyHandlers.Unlock()
-		updateChans.bcHeight <- 0
-	}
-}
-
 // cmdGetAddressesByAccount requests all addresses for an account.
 //
 // TODO(jrick): support addresses other than the default address.
@@ -449,6 +403,13 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 			}
 			updateChans.addrs <- addrs
 		} else {
+			if err.Code == btcjson.ErrWalletInvalidAccountName.Code {
+				glib.IdleAdd(func() {
+					if dialog, err := createNewWalletDialog(); err != nil {
+						dialog.Run()
+					}
+				})
+			}
 			updateChans.addrs <- []string{}
 		}
 	}
@@ -459,73 +420,6 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
 		updateChans.addrs <- []string{}
-	}
-}
-
-// cmdGetBalances requests the current account balances in the form of
-// a notification.  No reply is sent back, as the notification handler
-// should update the widgets.  We do this instead of waiting for for the
-// next notification.
-//
-// TODO(jrick): stop throwing away errors.
-func cmdGetBalances(ws *websocket.Conn) {
-	// No reply expected, so don't set a handler.
-	m := btcjson.Message{
-		Method: "getbalances",
-	}
-	msg, _ := json.Marshal(m)
-
-	if err := websocket.Message.Send(ws, msg); err != nil {
-		updateChans.balance <- 0
-		updateChans.unconfirmed <- 0
-	}
-}
-
-// cmdListAccounts requests all accounts and their balances.  This is
-// used after a websocket connection is established to add accounts to
-// the GUI, and create a wallet for the default account if it does not
-// exist.
-//
-// TODO(jrick): stop throwing away errors
-func cmdListAccounts(ws *websocket.Conn) {
-	n := <-NewJSONID
-	msg, err := btcjson.CreateMessageWithId("listaccounts", n)
-	if err != nil {
-		return
-	}
-
-	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		if err != nil {
-			return
-		}
-
-		if result == nil {
-			glib.IdleAdd(func() {
-				if dialog, err := createNewWalletDialog(); err != nil {
-					dialog.Run()
-				}
-			})
-			return
-
-		}
-		if r, ok := result.(map[string]interface{}); ok {
-			if _, ok := r[""]; !ok {
-				// Default account does not exist, so open dialog to create it
-				glib.IdleAdd(func() {
-					if dialog, err := createNewWalletDialog(); err != nil {
-						dialog.Run()
-					}
-				})
-			}
-		}
-	}
-	replyHandlers.Unlock()
-
-	if err := websocket.Message.Send(ws, msg); err != nil {
-		replyHandlers.Lock()
-		delete(replyHandlers.m, n)
-		replyHandlers.Unlock()
 	}
 }
 
@@ -559,39 +453,6 @@ func cmdWalletIsLocked(ws *websocket.Conn) {
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
 		// TODO(jrick): what to send here?
-	}
-}
-
-// cmdBtcdConnected requests the current connection state of btcwallet
-// to btcd.
-//
-// TODO(jrick): stop throwing away errors.
-func cmdBtcdConnected(ws *websocket.Conn) {
-	n := <-NewJSONID
-	m := btcjson.Message{
-		Jsonrpc: "1.0",
-		Id:      n,
-		Method:  "btcdconnected",
-		Params:  []interface{}{},
-	}
-	msg, err := json.Marshal(&m)
-	if err != nil {
-		return
-	}
-
-	replyHandlers.Lock()
-	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		if r, ok := result.(bool); ok {
-			updateChans.btcdConnected <- r
-		}
-	}
-	replyHandlers.Unlock()
-
-	if err = websocket.Message.Send(ws, msg); err != nil {
-		replyHandlers.Lock()
-		delete(replyHandlers.m, n)
-		replyHandlers.Unlock()
-		// TODO(jrick): what to do here?
 	}
 }
 
@@ -709,8 +570,7 @@ func strSliceEqual(a, b []string) bool {
 // and btcwallet, updating the GUI when necessary.
 func updateConnectionState() {
 	// Statusbar messages for various connection states.
-	btcdc := "Connected to btcd"
-	btcdd := "Connection to btcd lost"
+	btcdd := "Disconnected from btcd"
 	btcwc := "Established connection to btcwallet"
 	btcwd := "Disconnected from btcwallet.  Attempting reconnect..."
 
@@ -741,13 +601,7 @@ func updateConnectionState() {
 				})
 			}
 		case conn := <-updateChans.btcdConnected:
-			if conn {
-				glib.IdleAdd(func() {
-					SendCoins.SendBtn.SetSensitive(true)
-					StatusElems.Lab.SetText(btcdc)
-					StatusElems.Pb.Hide()
-				})
-			} else {
+			if !conn {
 				glib.IdleAdd(func() {
 					SendCoins.SendBtn.SetSensitive(false)
 					StatusElems.Lab.SetText(btcdd)

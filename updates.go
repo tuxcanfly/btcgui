@@ -601,7 +601,11 @@ func updateConnectionState() {
 				})
 			}
 		case conn := <-updateChans.btcdConnected:
-			if !conn {
+			if conn {
+				glib.IdleAdd(func() {
+					SendCoins.SendBtn.SetSensitive(true)
+				})
+			} else {
 				glib.IdleAdd(func() {
 					SendCoins.SendBtn.SetSensitive(false)
 					StatusElems.Lab.SetText(btcdd)

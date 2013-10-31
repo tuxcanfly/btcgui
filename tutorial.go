@@ -84,7 +84,12 @@ const (
 		"\n" +
 		"If neither you nor anyone you know has testnet Bitcoins, " +
 		"an online Bitcoin testnet faucet can be used to receive " +
-		"testnet coins."
+		"testnet coins.\n" +
+		"\n" +
+		"Of the standard script types, btcwallet only supports " +
+		"receiving Pay to Pubkey Hash transactions. Receiving " +
+		"from transactions with other standard script types will " +
+		"be added in later versions."
 
 	sendText = "<b>Sending Funds</b>\n" +
 		"\n" +
@@ -92,7 +97,11 @@ const (
 		"Enter the payment addresses and Bitcoin amounts to send " +
 		"for one or more recipient (adding additional recipients as " +
 		"needed).  A wallet must be unlocked before new " +
-		"transactions can be created."
+		"transactions can be created.\n" +
+		"\n" +
+		"Currently, btcwallet only creates Pay to Pubkey Hash " +
+		"transactions.  Generating other standard transactions " +
+		"will be added in later versions."
 
 	futureFeaturesText = "<b>Future Features</b>\n" +
 		"\n" +

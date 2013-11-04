@@ -32,6 +32,7 @@ const (
 		"rest of the tutorial.\n"
 
 	disclaimerText = "<b>Disclaimer</b>\n" +
+		"\n" +
 		"btcgui is still alpha-level development software and is " +
 		"not yet ready to replace other Bitcoin wallet software.\n" +
 		"\n" +

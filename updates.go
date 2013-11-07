@@ -174,7 +174,6 @@ func ListenAndUpdate(c chan error) {
 			var msg []byte
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
-				log.Print(err.Error)
 				close(replies)
 				return
 			}

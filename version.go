@@ -134,7 +134,7 @@ func (v appVersion) Equal(v2 appVersion) bool {
 func (v appVersion) SaveToDataDir(cfg *config) error {
 	// TODO(jrick): when home dir becomes a config option, use correct
 	// directory.
-	hdir := btcguiHomeDir()
+	hdir := btcguiHomeDir
 	fi, err := os.Stat(hdir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -184,8 +184,7 @@ func normalizeVerString(str string) string {
 func GetPreviousAppVersion(cfg *config) (*appVersion, error) {
 	// TODO(jrick): when home dir becomes a config option, use correct
 	// directory.
-	hdir := btcguiHomeDir()
-	filename := filepath.Join(hdir, appVersionFilename)
+	filename := filepath.Join(btcguiHomeDir, appVersionFilename)
 	if !fileExists(filename) {
 		return nil, ErrNoPreviousAppVersion
 	}

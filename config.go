@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/conformal/btcutil"
 	"github.com/conformal/btcwire"
 	"github.com/conformal/go-flags"
 	"log"
@@ -28,12 +29,14 @@ import (
 
 const (
 	defaultConfigFilename = "btcgui.conf"
+	defaultDataDirname    = "data"
 	defaultBtcNet         = btcwire.TestNet3
 )
 
 var (
-	defaultConfigFile = filepath.Join(btcguiHomeDir(), defaultConfigFilename)
-	defaultDataDir    = btcguiHomeDir()
+	btcguiHomeDir     = btcutil.AppDataDir("btcgui", false)
+	defaultConfigFile = filepath.Join(btcguiHomeDir, defaultConfigFilename)
+	defaultDataDir    = filepath.Join(btcguiHomeDir, defaultDataDirname)
 )
 
 type config struct {
@@ -41,25 +44,6 @@ type config struct {
 	ConfigFile  string `short:"C" long:"configfile" description:"Path to configuration file"`
 	Port        string `short:"p" long:"port" description:"port to connect "`
 	MainNet     bool   `long:"mainnet" description:"*DISABLED* Use the main Bitcoin network (default testnet3)"`
-}
-
-// btcguiHomeDir returns an OS appropriate home directory for btcgui.
-func btcguiHomeDir() string {
-	// Search for Windows APPDATA first.  This won't exist on POSIX OSes.
-	appData := os.Getenv("APPDATA")
-	if appData != "" {
-		return filepath.Join(appData, "btcgui")
-	}
-
-	// Fall back to standard HOME directory that works for most POSIX OSes.
-	home := os.Getenv("HOME")
-	if home != "" {
-		return filepath.Join(home, ".btcgui")
-	}
-
-	// In the worst case, use the current directory.
-	return "."
-
 }
 
 // updateConfigWithActiveParams update the passed config with parameters

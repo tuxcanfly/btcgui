@@ -9,7 +9,7 @@ Full btcwallet installation instructions can be found
 
 This project is currently under active development is not production
 ready yet.  Because of this, support for connecting to a mainnet
-btcwallet is currently disable, and testnet must be used instead.
+btcwallet is currently disabled, and testnet must be used instead.
 
 ## Installation
 

@@ -17,7 +17,7 @@ btcwallet is currently disabled, and testnet must be used instead.
 
 Install the btcd suite MSI available here:
 
-https://github.com/conformal/btcd/releases
+https://opensource.conformal.com/packages/windows/btcdsuite/
 
 ### Linux/BSD/POSIX - Build from Source
 
@@ -50,7 +50,7 @@ $ go get -u -v github.com/conformal/btcgui/...
 
 Install a newer btcd suite MSI here:
 
-https://github.com/conformal/btcd/releases
+https://opensource.conformal.com/packages/windows/btcdsuite/
 
 ### Linux/BSD/POSIX - Build from Source
 

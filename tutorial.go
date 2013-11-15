@@ -226,10 +226,8 @@ func CreateTutorialDialog(appWindow *gtk.Window) (*gtk.Dialog, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.Connect("response", func(cxt *glib.CallbackContext) {
-		response := gtk.ResponseType(int32(cxt.Arg(0)))
-		switch response {
-		case gtk.RESPONSE_CLOSE:
+	d.Connect("response", func(_ *glib.Object, rt gtk.ResponseType) {
+		if rt == gtk.RESPONSE_CLOSE {
 			// Using w.Close() would be nice but it needs GTK 3.10.
 			d.Hide()
 			d.Destroy()

@@ -47,9 +47,8 @@ var (
 	}{}
 )
 
-func removeRecipentFn(grid *gtk.Grid) func(*glib.CallbackContext) {
-	return func(ctx *glib.CallbackContext) {
-		r := ctx.Data().(*recipient)
+func removeRecipentFn(grid *gtk.Grid) func(*glib.Object, *recipient) {
+	return func(_ *glib.Object, r *recipient) {
 		for e := recipients.Front(); e != nil; e = e.Next() {
 			if r == e.Value {
 				recipients.Remove(e)
@@ -64,7 +63,7 @@ func removeRecipentFn(grid *gtk.Grid) func(*glib.CallbackContext) {
 	}
 }
 
-func createRecipient(rmFn func(*glib.CallbackContext)) *recipient {
+func createRecipient(rmFn func(*glib.Object, *recipient)) *recipient {
 	ret := new(recipient)
 	ret.n = recipients.Len()
 
@@ -103,10 +102,10 @@ func createRecipient(rmFn func(*glib.CallbackContext)) *recipient {
 	}
 	remove.SetImage(img)
 	remove.SetTooltipText("Remove this recipient")
-	remove.ConnectWithData("clicked", rmFn, ret)
+	remove.Connect("clicked", rmFn, ret)
 	grid.Attach(remove, 2, 0, 1, 1)
 
-	// TODO(jrick): Label doens't do anything currently, so don't add
+	// TODO(jrick): Label doesn't do anything currently, so don't add
 	// to gui.
 	/*
 		l, err = gtk.LabelNew("Label:")
@@ -236,7 +235,7 @@ func createSendCoins() *gtk.Widget {
 		log.Fatal(err)
 	}
 	btn.SetSizeRequest(150, -1)
-	btn.Connect("clicked", func(ctx *glib.CallbackContext) {
+	btn.Connect("clicked", func() {
 		insertSendEntries(entriesGrid)
 	})
 	bot.Add(btn)

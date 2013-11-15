@@ -104,8 +104,8 @@ func createEncryptionDialog() (*gtk.Dialog, error) {
 	dialog.SetPosition(gtk.WIN_POS_CENTER_ON_PARENT)
 	dialog.ShowAll()
 
-	dialog.Connect("response", func(ctx *glib.CallbackContext) {
-		switch gtk.ResponseType(ctx.Arg(0).Int()) {
+	dialog.Connect("response", func(_ *glib.Object, rt gtk.ResponseType) {
+		switch rt {
 		case gtk.RESPONSE_OK:
 			pStr, err := passphrase.GetText()
 			if err != nil {

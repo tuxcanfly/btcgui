@@ -28,8 +28,26 @@ type UnlockParams struct {
 	timeout    int64
 }
 
-const unlockMessage = "Enter the wallet passphrase and a timeout in seconds.\n" +
-	"The wallet will automatically lock after the timeout has expired."
+// UnlockText specifies the title and message to be shown in an
+// unlock wallet dialog.
+type UnlockText struct {
+	Title   string
+	Message string
+}
+
+var (
+	unlockManual = &UnlockText{
+		Title: "Unlock wallet",
+		Message: "Enter the wallet passphrase and a timeout in seconds.\n" +
+			"The wallet will automatically lock after the timeout has expired.",
+	}
+	unlockForTxSend  = unlockManual
+	unlockForKeypool = &UnlockText{
+		Title: "Refill address key pool",
+		Message: "Wallet must be unlocked to generate new addresses.\n" +
+			"The wallet will automatically lock after the timeout has expired.",
+	}
+)
 
 // createUnlockDialog creates a dialog to enter a passphrase and unlock
 // an encrypted wallet.  If an OK response is received, the passphrase will
@@ -39,12 +57,14 @@ const unlockMessage = "Enter the wallet passphrase and a timeout in seconds.\n" 
 // notification for whether the unlock was successful.  If the dialog is
 // closed without sending a request to btcwallet and the channel is
 // non-nil, the channel is closed.
-func createUnlockDialog(success chan bool) (*gtk.Dialog, error) {
+func createUnlockDialog(reason *UnlockText,
+	success chan bool) (*gtk.Dialog, error) {
+
 	dialog, err := gtk.DialogNew()
 	if err != nil {
 		return nil, err
 	}
-	dialog.SetTitle("Unlock wallet")
+	dialog.SetTitle(reason.Title)
 
 	dialog.AddButton("_OK", gtk.RESPONSE_OK)
 	dialog.AddButton("_Cancel", gtk.RESPONSE_CANCEL)
@@ -63,7 +83,7 @@ func createUnlockDialog(success chan bool) (*gtk.Dialog, error) {
 	b.SetHExpand(true)
 	b.SetVExpand(true)
 
-	lbl, err := gtk.LabelNew(unlockMessage)
+	lbl, err := gtk.LabelNew(reason.Message)
 	if err != nil {
 		return nil, err
 	}

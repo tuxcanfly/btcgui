@@ -356,7 +356,7 @@ func txSenderAndReplyListener(sendTo map[string]float64) {
 						}
 					}
 				}()
-				d, err := createUnlockDialog(unlockSuccessful)
+				d, err := createUnlockDialog(unlockForTxSend, unlockSuccessful)
 				if err != nil {
 					// TODO(jrick): log error to file
 					log.Printf("[ERR] could not create unlock dialog: %v\n", err)

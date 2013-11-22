@@ -321,10 +321,29 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 
 	replyHandlers.Lock()
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
-		if err != nil {
+		switch {
+		case err == nil:
+			if addr, ok := result.(string); ok {
+				triggerReplies.newAddr <- addr
+			}
+
+		case err.Code == btcjson.ErrWalletKeypoolRanOut.Code:
+			success := make(chan bool)
+			glib.IdleAdd(func() {
+				dialog, err := createUnlockDialog(unlockForKeypool, success)
+				if err != nil {
+					log.Print(err)
+					success <- false
+					return
+				}
+				dialog.Run()
+			})
+			if <-success {
+				triggers.newAddr <- 1
+			}
+
+		default: // all other non-nil errors
 			triggerReplies.newAddr <- errors.New(err.Message)
-		} else if addr, ok := result.(string); ok {
-			triggerReplies.newAddr <- addr
 		}
 	}
 	replyHandlers.Unlock()

@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/conformal/gotk3/gtk"
+	"log"
 )
 
 var (
@@ -70,14 +71,11 @@ func CreateWindow() (*gtk.Window, error) {
 	}
 	notebook.AppendPage(createRecvCoins(), l)
 
-	// TODO(jrick): Add back when transaction list is implemented.
-	/*
-		l, err = gtk.LabelNew("Transactions")
-		if err != nil {
-			log.Fatal(err)
-		}
-		notebook.AppendPage(createTransactions(), l)
-	*/
+	l, err = gtk.LabelNew("Transactions")
+	if err != nil {
+		log.Fatal(err)
+	}
+	notebook.AppendPage(createTransactions(), l)
 
 	// TODO(jrick): Add back when address book is implemented.
 	/*

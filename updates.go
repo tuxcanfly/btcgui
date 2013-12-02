@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/conformal/btcjson"
+	"github.com/conformal/btcws"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
@@ -29,6 +30,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const (
@@ -65,23 +67,31 @@ var (
 
 	// Channels filled from fetchFuncs and read by updateFuncs.
 	updateChans = struct {
+		addrs              chan []string
+		balance            chan float64
 		btcdConnected      chan bool
 		btcwalletConnected chan bool
-		balance            chan float64
-		unconfirmed        chan float64
 		bcHeight           chan int64
 		bcHeightRemote     chan int64
-		addrs              chan []string
 		lockState          chan bool
+		unconfirmed        chan float64
+		appendTx           chan *TxAttributes
+		prependTx          chan *TxAttributes
+		appendOverviewTx   chan *TxAttributes
+		prependOverviewTx  chan *TxAttributes
 	}{
+		addrs:              make(chan []string),
+		balance:            make(chan float64),
 		btcdConnected:      make(chan bool),
 		btcwalletConnected: make(chan bool),
-		balance:            make(chan float64),
-		unconfirmed:        make(chan float64),
 		bcHeight:           make(chan int64),
 		bcHeightRemote:     make(chan int64),
-		addrs:              make(chan []string),
 		lockState:          make(chan bool),
+		unconfirmed:        make(chan float64),
+		appendTx:           make(chan *TxAttributes),
+		prependTx:          make(chan *TxAttributes),
+		appendOverviewTx:   make(chan *TxAttributes),
+		prependOverviewTx:  make(chan *TxAttributes),
 	}
 
 	triggers = struct {
@@ -116,6 +126,7 @@ var (
 
 	walletReqFuncs = []func(*websocket.Conn){
 		cmdGetAddressesByAccount,
+		cmdListAllTransactions,
 		cmdWalletIsLocked,
 	}
 	updateFuncs = [](func()){
@@ -124,6 +135,7 @@ var (
 		updateConnectionState,
 		updateLockState,
 		updateProgress,
+		updateTransactions,
 		updateUnconfirmed,
 	}
 )
@@ -240,6 +252,8 @@ func ListenAndUpdate(c chan error) {
 
 // handleBtcwalletNtfn processes notifications from btcwallet and
 // btcd, triggering the GUI updates associated with the notification.
+//
+// TODO(jrick): pass a btcws.Notification to this func.
 func handleBtcwalletNtfn(id string, result interface{}) {
 	switch id {
 	// Global notifications
@@ -254,6 +268,30 @@ func handleBtcwalletNtfn(id string, result interface{}) {
 		}
 
 	// Notifications per wallet (account)
+	case btcws.TxNtfnId:
+		if r, ok := result.(map[string]interface{}); ok {
+			account, ok := r["account"].(string)
+			if !ok {
+				return
+			}
+			details, ok := r["details"].(map[string]interface{})
+			if !ok {
+				return
+			}
+
+			attr, err := parseTxDetails(details)
+			if err != nil {
+				return
+			}
+
+			// TODO(jrick): do proper filtering and display
+			// tx details for all accounts.
+			if account == "" {
+				updateChans.prependOverviewTx <- attr
+				updateChans.prependTx <- attr
+			}
+		}
+
 	case "btcwallet:accountbalance":
 		if r, ok := result.(map[string]interface{}); ok {
 			account, ok := r["account"].(string)
@@ -402,8 +440,7 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 
 // cmdGetAddressesByAccount requests all addresses for an account.
 //
-// TODO(jrick): support addresses other than the default address.
-//
+// TODO(jrick): support non-default accounts.
 // TODO(jrick): stop throwing away errors.
 func cmdGetAddressesByAccount(ws *websocket.Conn) {
 	n := <-NewJSONID
@@ -439,6 +476,114 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 		replyHandlers.Unlock()
 		updateChans.addrs <- []string{}
 	}
+}
+
+// cmdListAllTransactions requests all transactions for the default account.
+//
+// TODO(jrick): support non-default accounts.
+func cmdListAllTransactions(ws *websocket.Conn) {
+	n := <-NewJSONID
+	cmd, err := btcws.NewListAllTransactionsCmd(n, "")
+	if err != nil {
+		log.Printf("[ERR] cannot create listalltransactions command.")
+		return
+	}
+	mcmd, _ := cmd.MarshalJSON()
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if err != nil {
+			log.Printf("[ERR] listtransactions: %v", err)
+			return
+		}
+
+		if result == nil {
+			return
+		}
+
+		vr, ok := result.([]interface{})
+		if !ok {
+			log.Printf("[ERR] listalltransactions reply is not an array.")
+			return
+		}
+		for i, r := range vr {
+			m, ok := r.(map[string]interface{})
+			if !ok {
+				log.Print("[ERR] listalltransactions: reply is not an array of JSON objects.")
+				return
+			}
+
+			txAttr, err := parseTxDetails(m)
+			if err != nil {
+				log.Printf("[ERR] listalltransactions: %v", err)
+				return
+			}
+
+			updateChans.appendTx <- txAttr
+
+			if i < NOverviewTxs {
+				updateChans.appendOverviewTx <- txAttr
+			}
+		}
+	}
+	replyHandlers.Unlock()
+
+	if err = websocket.Message.Send(ws, mcmd); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+	}
+}
+
+func parseTxDetails(m map[string]interface{}) (*TxAttributes, error) {
+	var direction txDirection
+	category, ok := m["category"].(string)
+	if !ok {
+		return nil, errors.New("unspecified category")
+	}
+	switch category {
+	case "send":
+		direction = Send
+
+	case "receive":
+		direction = Recv
+
+	default: // TODO: support additional listtransaction categories.
+		return nil, fmt.Errorf("unsupported tx category: %v", category)
+	}
+
+	address, ok := m["address"].(string)
+	if !ok {
+		return nil, errors.New("unspecified address")
+	}
+
+	famount, ok := m["amount"].(float64)
+	if !ok {
+		return nil, errors.New("unspecified amount")
+	}
+	amount, err := btcjson.JSONToAmount(famount)
+	if !ok {
+		return nil, fmt.Errorf("invalid amount: %v", err)
+	}
+
+	var funixDate float64
+	switch direction {
+	case Send:
+		funixDate, ok = m["time"].(float64)
+	case Recv:
+		funixDate, ok = m["timereceived"].(float64)
+	}
+	if !ok {
+		return nil, errors.New("unspecified time")
+	}
+	unixDate := int64(funixDate)
+
+	return &TxAttributes{
+		Direction: direction,
+		Address:   address,
+		Amount:    amount,
+		Date:      time.Unix(unixDate, 0),
+	}, nil
 }
 
 // cmdWalletIsLocked requests the current lock state of the
@@ -767,5 +912,82 @@ func updateProgress() {
 			StatusElems.Lab.SetText(s)
 			StatusElems.Pb.Hide()
 		})
+	}
+}
+
+func updateTransactions() {
+	for {
+		select {
+		case attr := <-updateChans.appendTx:
+			glib.IdleAdd(func() {
+				var iter gtk.TreeIter
+				txWidgets.store.Append(&iter)
+				const layout = "01/02/2006"
+				txWidgets.store.Set(&iter, []int{0, 1, 2, 3},
+					[]interface{}{attr.Date.Format(layout),
+						attr.Direction.String(),
+						attr.Address,
+						amountStr(attr.Amount)})
+			})
+
+		case attr := <-updateChans.appendOverviewTx:
+			glib.IdleAdd(func() {
+				txLabel, err := createTxLabel(attr)
+				if err != nil {
+					log.Printf("[ERR] cannot create tx label: %v\n", err)
+					return
+				}
+
+				if len(Overview.TxList) == NOverviewTxs {
+					first := Overview.TxList[0]
+					copy(Overview.TxList, Overview.TxList[1:])
+					Overview.TxList[NOverviewTxs-1] = txLabel
+					Overview.Txs.Remove(first)
+					first.Destroy()
+				} else {
+					Overview.TxList = append(Overview.TxList, txLabel)
+				}
+
+				Overview.Txs.Add(txLabel)
+
+				txLabel.ShowAll()
+			})
+
+		case attr := <-updateChans.prependTx:
+			glib.IdleAdd(func() {
+				var iter gtk.TreeIter
+				txWidgets.store.Prepend(&iter)
+				const layout = "01/02/2006"
+				txWidgets.store.Set(&iter, []int{0, 1, 2, 3},
+					[]interface{}{attr.Date.Format(layout),
+						attr.Direction.String(),
+						attr.Address,
+						amountStr(attr.Amount)})
+			})
+
+		case attr := <-updateChans.prependOverviewTx:
+			glib.IdleAdd(func() {
+				txLabel, err := createTxLabel(attr)
+				if err != nil {
+					log.Printf("[ERR] cannot create tx label: %v\n", err)
+					return
+				}
+
+				if len(Overview.TxList) == NOverviewTxs {
+					last := Overview.TxList[NOverviewTxs-1]
+					copy(Overview.TxList[1:], Overview.TxList)
+					Overview.TxList[0] = txLabel
+					Overview.Txs.Remove(last)
+					last.Destroy()
+				} else {
+					Overview.TxList = append(Overview.TxList, txLabel)
+				}
+
+				Overview.Txs.InsertRow(0)
+				Overview.Txs.Attach(txLabel, 0, 0, 1, 1)
+
+				txLabel.ShowAll()
+			})
+		}
 	}
 }

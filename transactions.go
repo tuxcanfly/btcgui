@@ -17,11 +17,45 @@
 package main
 
 import (
+	"github.com/conformal/btcutil"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
+	"strconv"
 	"time"
 )
+
+type txDirection int
+
+// Possible directions of a transaction.
+const (
+	Send txDirection = iota
+	Recv
+)
+
+// String returns a transaction direction as a string.  Satisifies
+// the fmt.Stringer interface.
+func (d txDirection) String() string {
+	switch d {
+	case Send:
+		return "Send"
+
+	case Recv:
+		return "Receive"
+
+	default:
+		return "Unknown"
+	}
+}
+
+// TxAttributes holds the information that is shown by each transaction
+// in the transactions view and overview pane.
+type TxAttributes struct {
+	Direction txDirection
+	Address   string
+	Amount    int64 // measured in satoshis
+	Date      time.Time
+}
 
 var txWidgets struct {
 	store    *gtk.ListStore
@@ -29,11 +63,10 @@ var txWidgets struct {
 }
 
 func createTransactions() *gtk.Widget {
-	grid, err := gtk.GridNew()
+	sw, err := gtk.ScrolledWindowNew(nil, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	grid.SetOrientation(gtk.ORIENTATION_VERTICAL)
 
 	store, err := gtk.ListStoreNew(glib.TYPE_STRING, glib.TYPE_STRING,
 		glib.TYPE_STRING, glib.TYPE_STRING)
@@ -49,7 +82,7 @@ func createTransactions() *gtk.Widget {
 	tv.SetVExpand(true)
 	txWidgets.store = store
 	txWidgets.treeview = tv
-	grid.Add(tv)
+	sw.Add(tv)
 
 	cr, err := gtk.CellRendererTextNew()
 	if err != nil {
@@ -92,18 +125,10 @@ func createTransactions() *gtk.Widget {
 	}
 	tv.AppendColumn(col)
 
-	// some example addresses
-	var iterPurchase gtk.TreeIter
-	store.Append(&iterPurchase)
-	const layout = "01/02/2006"
-	store.Set(&iterPurchase, []int{0, 1, 2, 3}, []interface{}{
-		time.Now().Format(layout), "Purchase", "01234567890",
-		"0.50000000"})
-	var iterPayment gtk.TreeIter
-	store.Append(&iterPayment)
-	store.Set(&iterPayment, []int{0, 1, 2, 3}, []interface{}{
-		time.Now().Format(layout), "Payment", "0987654321",
-		"0.50000000"})
+	return &sw.Bin.Container.Widget
+}
 
-	return &grid.Container.Widget
+func amountStr(amount int64) string {
+	fAmount := float64(amount) / float64(btcutil.SatoshiPerBitcoin)
+	return strconv.FormatFloat(fAmount, 'f', 8, 64)
 }

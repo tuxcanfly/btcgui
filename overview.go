@@ -20,26 +20,23 @@ import (
 	"fmt"
 	"github.com/conformal/gotk3/gtk"
 	"log"
-	"math"
-	"strconv"
-	"time"
 )
 
-type txDirection int
-
-// Possible directions of a transaction
-const (
-	Send txDirection = iota
-	Recv
-)
+const NOverviewTxs = 5
 
 var (
 	// Overview holds pointers to widgets shown in the overview tab.
 	Overview = struct {
 		Balance       *gtk.Label
 		Unconfirmed   *gtk.Label
-		NTransactions *gtk.Label
-	}{}
+		NTransactions *gtk.Label // TODO(jrick): update with value from btcwallet, requires extension.
+		Txs           *gtk.Grid
+		TxList        []*gtk.Widget
+	}{
+		TxList: make([]*gtk.Widget, 0, NOverviewTxs),
+	}
+
+	// Holds pointers to the latest tx label widgets.
 )
 
 func createWalletInfo() *gtk.Widget {
@@ -86,7 +83,6 @@ func createWalletInfo() *gtk.Widget {
 	grid.Attach(unconfirmed, 1, 2, 1, 1)
 	Overview.Unconfirmed = unconfirmed
 
-	// TODO(jrick): Add back when transaction list is implemented.
 	/*
 		transactions, err := gtk.LabelNew("Number of transactions:")
 		if err != nil {
@@ -95,7 +91,7 @@ func createWalletInfo() *gtk.Widget {
 		transactions.SetHAlign(gtk.ALIGN_START)
 		grid.Attach(transactions, 0, 3, 1, 1)
 
-		transactions, err = gtk.LabelNew(strconv.Itoa(2))
+		transactions, err = gtk.LabelNew("a lot")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -123,62 +119,61 @@ func createTxInfo() *gtk.Widget {
 	l.SetHAlign(gtk.ALIGN_START)
 	grid.Add(l)
 
-	// TODO(jrick): connect this
-	grid.Add(createTxLabel(Send, 1.0, "1234567890", time.Now()))
-	grid.Add(createTxLabel(Recv, 1.0, "0987654321", time.Now()))
+	txGrid, err := gtk.GridNew()
+	if err != nil {
+		log.Fatal(err)
+	}
+	txGrid.SetOrientation(gtk.ORIENTATION_VERTICAL)
+	grid.Add(txGrid)
+
+	Overview.Txs = txGrid
 
 	return &grid.Container.Widget
 }
 
-func createTxLabel(dir txDirection, amt float64, addr string, t time.Time) *gtk.Widget {
+func createTxLabel(attr *TxAttributes) (*gtk.Widget, error) {
 	grid, err := gtk.GridNew()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.SetHExpand(true)
 
 	var amtLabel *gtk.Label
 	var description *gtk.Label
 	var icon *gtk.Image
-	switch dir {
+	switch attr.Direction {
 	case Send:
-		s := "-" +
-			strconv.FormatFloat(math.Abs(0), 'f', 8, 64) +
-			" BTC"
-
-		amtLabel, err = gtk.LabelNew(s)
+		amtLabel, err = gtk.LabelNew(amountStr(attr.Amount))
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		description, err = gtk.LabelNew(fmt.Sprintf("Purchase (%s)", addr))
+		description, err = gtk.LabelNew(fmt.Sprintf("Send (%s)", attr.Address))
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		icon, err = gtk.ImageNewFromIconName("go-next",
 			gtk.ICON_SIZE_SMALL_TOOLBAR)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
+
 	case Recv:
-		s := strconv.FormatFloat(math.Abs(0), 'f', 8, 64) +
-			" BTC"
-
-		amtLabel, err = gtk.LabelNew(s)
+		amtLabel, err = gtk.LabelNew(amountStr(attr.Amount))
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		description, err = gtk.LabelNew(fmt.Sprintf("Payment (%s)", addr))
+		description, err = gtk.LabelNew(fmt.Sprintf("Receive (%s)", attr.Address))
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		icon, err = gtk.ImageNewFromIconName("go-previous",
 			gtk.ICON_SIZE_SMALL_TOOLBAR)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 	grid.Attach(icon, 0, 0, 2, 2)
@@ -188,16 +183,16 @@ func createTxLabel(dir txDirection, amt float64, addr string, t time.Time) *gtk.
 	amtLabel.SetHAlign(gtk.ALIGN_END)
 	amtLabel.SetHExpand(true)
 
-	date, err := gtk.LabelNew(t.Format("Jan 2, 2006 at 3:04 PM"))
+	date, err := gtk.LabelNew(attr.Date.Format("Jan 2, 2006 at 3:04 PM"))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	grid.Attach(date, 2, 0, 1, 1)
 	date.SetHAlign(gtk.ALIGN_START)
 
 	grid.SetHAlign(gtk.ALIGN_FILL)
 
-	return &grid.Container.Widget
+	return &grid.Container.Widget, nil
 }
 
 func createOverview() *gtk.Widget {
@@ -208,8 +203,7 @@ func createOverview() *gtk.Widget {
 
 	grid.SetColumnHomogeneous(true)
 	grid.Add(createWalletInfo())
-	// TODO(jrick): Add back when transaction list is implemented.
-	// grid.Add(createTxInfo())
+	grid.Add(createTxInfo())
 
 	return &grid.Container.Widget
 }

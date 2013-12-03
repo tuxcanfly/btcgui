@@ -566,15 +566,14 @@ func parseTxDetails(m map[string]interface{}) (*TxAttributes, error) {
 		return nil, fmt.Errorf("invalid amount: %v", err)
 	}
 
-	var funixDate float64
-	switch direction {
-	case Send:
-		funixDate, ok = m["time"].(float64)
-	case Recv:
-		funixDate, ok = m["timereceived"].(float64)
-	}
+	funixDate, ok := m["timereceived"].(float64)
 	if !ok {
 		return nil, errors.New("unspecified time")
+	}
+	if fblockTime, ok := m["blocktime"].(float64); ok {
+		if fblockTime < funixDate {
+			funixDate = fblockTime
+		}
 	}
 	unixDate := int64(funixDate)
 

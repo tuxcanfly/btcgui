@@ -19,7 +19,9 @@ package main
 import (
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
+	"io/ioutil"
 	"log"
+	"os"
 	"time"
 )
 
@@ -87,6 +89,13 @@ func StartMainApplication() {
 		log.Print(err)
 	}
 
+	// Read CA file to verify a btcwallet TLS connection.
+	cafile, err := ioutil.ReadFile(cfg.CAFile)
+	if err != nil {
+		log.Printf("[ERR] cannot open CA file: %v", err)
+		os.Exit(1)
+	}
+
 	// Begin generating new IDs for JSON calls.
 	go JSONIDGenerator(NewJSONID)
 
@@ -96,7 +105,7 @@ func StartMainApplication() {
 		replies := make(chan error)
 		done := make(chan int)
 		go func() {
-			ListenAndUpdate(replies)
+			ListenAndUpdate(cafile, replies)
 			close(done)
 		}()
 	selectLoop:
@@ -115,6 +124,7 @@ func StartMainApplication() {
 				case nil:
 					// connected
 					updateChans.btcwalletConnected <- true
+					log.Print("Established connection to btcwallet.")
 				default:
 					// TODO(jrick): present unknown error to user in the
 					// GUI somehow.

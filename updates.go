@@ -18,11 +18,15 @@ package main
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcws"
+	"github.com/conformal/go-socks"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
@@ -156,7 +160,7 @@ var updateOnce sync.Once
 // ListenAndUpdate opens a websocket connection to a btcwallet
 // instance and initiates requests to fill the GUI with relevant
 // information.
-func ListenAndUpdate(c chan error) {
+func ListenAndUpdate(certificates []byte, c chan error) {
 	// Start each updater func in a goroutine.  Use a sync.Once to
 	// ensure there are no duplicate updater functions running.
 	updateOnce.Do(func() {
@@ -166,12 +170,51 @@ func ListenAndUpdate(c chan error) {
 	})
 
 	// Connect to websocket.
-	// TODO(jrick): use TLS
-	// TODO(jrick): http username/password?
-	origin := "http://localhost/"
-	url := fmt.Sprintf("ws://%s/frontend", net.JoinHostPort("localhost", cfg.Port))
-	ws, err := websocket.Dial(url, "", origin)
+	remote := net.JoinHostPort("localhost", cfg.Port)
+	url := fmt.Sprintf("wss://%s/frontend", remote)
+	config, err := websocket.NewConfig(url, "https://localhost/")
 	if err != nil {
+		log.Printf("[ERR] cannot create websocket config: %v", err)
+		c <- ErrConnectionRefused
+		return
+	}
+
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(certificates)
+	config.TlsConfig = &tls.Config{
+		RootCAs:    pool,
+		MinVersion: tls.VersionTLS12,
+	}
+
+	// btcwallet requires basic authorization, so we use a custom config
+	// with the Authorization header set.
+	login := cfg.Username + ":" + cfg.Password
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(login))
+	config.Header.Add("Authorization", auth)
+
+	// Attempt to connect to running btcwallet instance. Bail if it fails.
+	var ws *websocket.Conn
+	var cerr error
+	if cfg.Proxy != "" {
+		proxy := &socks.Proxy{
+			Addr:     cfg.Proxy,
+			Username: cfg.ProxyUser,
+			Password: cfg.ProxyPass,
+		}
+		conn, err := proxy.Dial("tcp", remote)
+		if err != nil {
+			log.Printf("Error connecting to proxy: %v", err)
+			c <- ErrConnectionRefused
+			return
+		}
+
+		tlsConn := tls.Client(conn, config.TlsConfig)
+		ws, cerr = websocket.NewClient(config, tlsConn)
+	} else {
+		ws, cerr = websocket.DialConfig(config)
+	}
+	if cerr != nil {
+		log.Printf("[ERR] Cannot create websocket client: %v", cerr)
 		c <- ErrConnectionRefused
 		return
 	}

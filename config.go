@@ -28,6 +28,7 @@ import (
 )
 
 const (
+	defualtCAFilename     = "btcwallet.cert"
 	defaultConfigFilename = "btcgui.conf"
 	defaultDataDirname    = "data"
 	defaultBtcNet         = btcwire.TestNet3
@@ -35,15 +36,36 @@ const (
 
 var (
 	btcguiHomeDir     = btcutil.AppDataDir("btcgui", false)
+	defaultCAFile     = filepath.Join(btcguiHomeDir, defualtCAFilename)
 	defaultConfigFile = filepath.Join(btcguiHomeDir, defaultConfigFilename)
 	defaultDataDir    = filepath.Join(btcguiHomeDir, defaultDataDirname)
 )
 
 type config struct {
 	ShowVersion bool   `short:"V" long:"version" description:"Display version information and exit"`
+	CAFile      string `long:"cafile" description:"File containing root certificates to authenticate a TLS connections with btcwallet"`
 	ConfigFile  string `short:"C" long:"configfile" description:"Path to configuration file"`
+	Username    string `short:"u" long:"username" description:"Username for btcwallet authorization"`
+	Password    string `short:"P" long:"password" description:"Password for btcwallet authorization"`
 	Port        string `short:"p" long:"port" description:"port to connect "`
 	MainNet     bool   `long:"mainnet" description:"*DISABLED* Use the main Bitcoin network (default testnet3)"`
+	Proxy       string `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
+	ProxyUser   string `long:"proxyuser" description:"Username for proxy server"`
+	ProxyPass   string `long:"proxypass" default-mask:"-" description:"Password for proxy server"`
+}
+
+// cleanAndExpandPath expands environement variables and leading ~ in the
+// passed path, cleans the result, and returns it.
+func cleanAndExpandPath(path string) string {
+	// Expand initial ~ to OS specific home directory.
+	if strings.HasPrefix(path, "~") {
+		homeDir := filepath.Dir(btcguiHomeDir)
+		path = strings.Replace(path, "~", homeDir, 1)
+	}
+
+	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
+	// but they variables can still be expanded via POSIX-style $VARIABLE.
+	return filepath.Clean(os.ExpandEnv(path))
 }
 
 // updateConfigWithActiveParams update the passed config with parameters
@@ -81,6 +103,7 @@ func fileExists(name string) bool {
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
+		CAFile:     defaultCAFile,
 		ConfigFile: defaultConfigFile,
 		Port:       netParams(defaultBtcNet).port,
 	}
@@ -136,7 +159,7 @@ func loadConfig() (*config, []string, error) {
 	// succeeds.  This prevents the warning on help messages and invalid
 	// options.
 	if configFileError != nil {
-		log.Printf("[WARN] %v", err)
+		log.Printf("[WARN] %v", configFileError)
 	}
 
 	// TODO(jrick): Enable mainnet support again when ready.
@@ -147,6 +170,9 @@ func loadConfig() (*config, []string, error) {
 		activeNetParams = netParams(btcwire.MainNet)
 	}
 	updateConfigWithActiveParams(&cfg)
+
+	// Expand environment variables and leading ~ for filepaths.
+	cfg.CAFile = cleanAndExpandPath(cfg.CAFile)
 
 	return &cfg, remainingArgs, nil
 

@@ -22,6 +22,7 @@ import (
 	"github.com/conformal/btcwire"
 	"github.com/conformal/go-flags"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,10 +45,10 @@ var (
 type config struct {
 	ShowVersion bool   `short:"V" long:"version" description:"Display version information and exit"`
 	CAFile      string `long:"cafile" description:"File containing root certificates to authenticate a TLS connections with btcwallet"`
+	Connect     string `short:"c" long:"connect" description:"Server and port of btcwallet instance to connect to (default localhost:18332, mainnet: localhost:8332)"`
 	ConfigFile  string `short:"C" long:"configfile" description:"Path to configuration file"`
 	Username    string `short:"u" long:"username" description:"Username for btcwallet authorization"`
 	Password    string `short:"P" long:"password" description:"Password for btcwallet authorization"`
-	Port        string `short:"p" long:"port" description:"port to connect "`
 	MainNet     bool   `long:"mainnet" description:"*DISABLED* Use the main Bitcoin network (default testnet3)"`
 	Proxy       string `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
 	ProxyUser   string `long:"proxyuser" description:"Username for proxy server"`
@@ -68,14 +69,28 @@ func cleanAndExpandPath(path string) string {
 	return filepath.Clean(os.ExpandEnv(path))
 }
 
-// updateConfigWithActiveParams update the passed config with parameters
-// from the active net params if the relevant options in the passed config
-// object are the default so options specified by the user on the command line
-// are not overridden.
-func updateConfigWithActiveParams(cfg *config) {
-	if cfg.Port == netParams(defaultBtcNet).port {
-		cfg.Port = activeNetParams.port
+// removeDuplicateAddresses returns a new slice with all duplicate entries in
+// addrs removed.
+func removeDuplicateAddresses(addrs []string) []string {
+	result := make([]string, 0)
+	seen := map[string]bool{}
+	for _, val := range addrs {
+		if _, ok := seen[val]; !ok {
+			result = append(result, val)
+			seen[val] = true
+		}
 	}
+	return result
+}
+
+// normalizeAddresses returns a new slice with all the passed peer addresses
+// normalized with the given default port, and all duplicates removed.
+func normalizeAddresses(addrs []string, defaultPort string) []string {
+	for i, addr := range addrs {
+		addrs[i] = normalizeAddress(addr, defaultPort)
+	}
+
+	return removeDuplicateAddresses(addrs)
 }
 
 // filesExists reports whether the named file or directory exists.
@@ -86,6 +101,16 @@ func fileExists(name string) bool {
 		}
 	}
 	return true
+}
+
+// normalizeAddress returns addr with the passed default port appended if
+// there is not already a port specified.
+func normalizeAddress(addr, defaultPort string) string {
+	_, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return net.JoinHostPort(addr, defaultPort)
+	}
+	return addr
 }
 
 // loadConfig initializes and parses the config using a config file and command
@@ -105,7 +130,6 @@ func loadConfig() (*config, []string, error) {
 	cfg := config{
 		CAFile:     defaultCAFile,
 		ConfigFile: defaultConfigFile,
-		Port:       netParams(defaultBtcNet).port,
 	}
 
 	// A config file in the current directory takes precedence.
@@ -169,7 +193,13 @@ func loadConfig() (*config, []string, error) {
 	if cfg.MainNet {
 		activeNetParams = netParams(btcwire.MainNet)
 	}
-	updateConfigWithActiveParams(&cfg)
+
+	if cfg.Connect == "" {
+		cfg.Connect = activeNetParams.connect
+	}
+
+	// Add default port to connect flag if missing.
+	cfg.Connect = normalizeAddress(cfg.Connect, activeNetParams.port)
 
 	// Expand environment variables and leading ~ for filepaths.
 	cfg.CAFile = cleanAndExpandPath(cfg.CAFile)

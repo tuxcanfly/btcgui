@@ -31,7 +31,6 @@ import (
 	"github.com/conformal/gotk3/gtk"
 	"log"
 	"math"
-	"net"
 	"strconv"
 	"sync"
 	"time"
@@ -170,8 +169,7 @@ func ListenAndUpdate(certificates []byte, c chan error) {
 	})
 
 	// Connect to websocket.
-	remote := net.JoinHostPort("localhost", cfg.Port)
-	url := fmt.Sprintf("wss://%s/frontend", remote)
+	url := fmt.Sprintf("wss://%s/frontend", cfg.Connect)
 	config, err := websocket.NewConfig(url, "https://localhost/")
 	if err != nil {
 		log.Printf("[ERR] cannot create websocket config: %v", err)
@@ -201,7 +199,7 @@ func ListenAndUpdate(certificates []byte, c chan error) {
 			Username: cfg.ProxyUser,
 			Password: cfg.ProxyPass,
 		}
-		conn, err := proxy.Dial("tcp", remote)
+		conn, err := proxy.Dial("tcp", cfg.Connect)
 		if err != nil {
 			log.Printf("Error connecting to proxy: %v", err)
 			c <- ErrConnectionRefused

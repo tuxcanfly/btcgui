@@ -1,6 +1,9 @@
 btcgui
 ======
 
+[![Build Status](https://travis-ci.org/conformal/btcgui.png?branch=master)]
+(https://travis-ci.org/conformal/btcgui)
+
 btcgui is a graphical frontend to btcwallet and btcd written using
 gotk3.
 

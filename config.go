@@ -49,7 +49,7 @@ type config struct {
 	ConfigFile  string `short:"C" long:"configfile" description:"Path to configuration file"`
 	Username    string `short:"u" long:"username" description:"Username for btcwallet authorization"`
 	Password    string `short:"P" long:"password" description:"Password for btcwallet authorization"`
-	MainNet     bool   `long:"mainnet" description:"*DISABLED* Use the main Bitcoin network (default testnet3)"`
+	MainNet     bool   `long:"mainnet" description:"Use the main Bitcoin network (default testnet3)"`
 	Proxy       string `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
 	ProxyUser   string `long:"proxyuser" description:"Username for proxy server"`
 	ProxyPass   string `long:"proxypass" default-mask:"-" description:"Password for proxy server"`
@@ -185,9 +185,6 @@ func loadConfig() (*config, []string, error) {
 	if configFileError != nil {
 		log.Printf("[WARN] %v", configFileError)
 	}
-
-	// TODO(jrick): Enable mainnet support again when ready.
-	cfg.MainNet = false
 
 	// Choose the active network params based on the mainnet net flag.
 	if cfg.MainNet {

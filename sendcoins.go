@@ -156,31 +156,40 @@ func createRecipient(rmFn func(*glib.Object, *recipient)) *recipient {
 	if err := ls.Set(&iter, []int{0}, []interface{}{"μBTC"}); err != nil {
 		fmt.Println(err)
 	}
-	combo, err := gtk.ComboBoxNewWithModel(ls)
-	if err != nil {
-		log.Fatal(err)
-	}
-	cell, err := gtk.CellRendererTextNew()
-	if err != nil {
-		log.Fatal(err)
-	}
-	combo.PackStart(cell, true)
-	combo.AddAttribute(cell, "text", 0)
-	combo.SetActive(0)
-	combo.Connect("changed", func() {
-		val := amount.GetValue()
-		fmt.Println(val)
-		switch combo.GetActive() {
-		case 0:
-			fmt.Println("btc")
-		case 1:
-			fmt.Println("mbtc")
-		case 2:
-			fmt.Println("ubtc")
+
+	// TODO(jrick): add back when this works.
+	/*
+		combo, err := gtk.ComboBoxNewWithModel(ls)
+		if err != nil {
+			log.Fatal(err)
 		}
-	})
-	ret.combo = combo
-	amounts.Add(combo)
+		cell, err := gtk.CellRendererTextNew()
+		if err != nil {
+			log.Fatal(err)
+		}
+		combo.PackStart(cell, true)
+		combo.AddAttribute(cell, "text", 0)
+		combo.SetActive(0)
+		combo.Connect("changed", func() {
+			val := amount.GetValue()
+			fmt.Println(val)
+			switch combo.GetActive() {
+			case 0:
+				fmt.Println("btc")
+			case 1:
+				fmt.Println("mbtc")
+			case 2:
+				fmt.Println("ubtc")
+			}
+		})
+		ret.combo = combo
+		amounts.Add(combo)
+	*/
+	l, err = gtk.LabelNew("BTC")
+	if err != nil {
+		log.Fatal(err)
+	}
+	amounts.Add(l)
 
 	grid.Attach(amounts, 1, 1, 1, 1)
 

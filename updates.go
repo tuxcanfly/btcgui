@@ -74,8 +74,8 @@ var (
 		balance            chan float64
 		btcdConnected      chan bool
 		btcwalletConnected chan bool
-		bcHeight           chan int64
-		bcHeightRemote     chan int64
+		bcHeight           chan int32
+		bcHeightRemote     chan int32
 		lockState          chan bool
 		unconfirmed        chan float64
 		appendTx           chan *TxAttributes
@@ -87,8 +87,8 @@ var (
 		balance:            make(chan float64),
 		btcdConnected:      make(chan bool),
 		btcwalletConnected: make(chan bool),
-		bcHeight:           make(chan int64),
-		bcHeightRemote:     make(chan int64),
+		bcHeight:           make(chan int32),
+		bcHeightRemote:     make(chan int32),
 		lockState:          make(chan bool),
 		unconfirmed:        make(chan float64),
 		appendTx:           make(chan *TxAttributes),
@@ -246,137 +246,204 @@ func ListenAndUpdate(certificates []byte, c chan error) {
 				c <- ErrConnectionLost
 				return
 			}
-			var rply btcjson.Reply
-			if err := json.Unmarshal(r, &rply); err != nil {
-				log.Printf("Unable to unmarshal JSON reply: %v",
-					err)
-				continue
-			}
 
-			if rply.Id == nil {
-				log.Print("Invalid JSON ID")
-				continue
-			}
-			id := *(rply.Id)
-			switch id.(type) {
-			case float64:
-				// json.Unmarshal unmarshalls all numbers as
-				// float64
-				uintID := uint64(id.(float64))
-				replyHandlers.Lock()
-				f := replyHandlers.m[uintID]
-				delete(replyHandlers.m, uintID)
-				replyHandlers.Unlock()
-				if f != nil {
-					go f(rply.Result, rply.Error)
-				}
-			case string:
-				// Handle btcwallet notification.
-				go handleBtcwalletNtfn(id.(string),
-					rply.Result)
-			}
+			// Handle message here.
+			go ProcessBtcwalletMessage(r)
+
 		case <-triggers.newAddr:
 			go cmdGetNewAddress(ws)
+
 		case params := <-triggers.newWallet:
 			go cmdCreateEncryptedWallet(ws, params)
+
 		case <-triggers.lockWallet:
 			go cmdWalletLock(ws)
+
 		case params := <-triggers.unlockWallet:
 			go cmdWalletPassphrase(ws, params)
+
 		case pairs := <-triggers.sendTx:
 			go cmdSendMany(ws, pairs)
+
 		case fee := <-triggers.setTxFee:
 			go cmdSetTxFee(ws, fee)
 		}
 	}
 }
 
-// handleBtcwalletNtfn processes notifications from btcwallet and
-// btcd, triggering the GUI updates associated with the notification.
+// ProcessBtcwalletMessage unmarshalls the JSON notification or
+// reply received from btcwallet and decides how to handle it.
+func ProcessBtcwalletMessage(b []byte) {
+	// Idea: instead of reading btcwallet messages from just one
+	// websocket connection, maybe use two so the same connection isn't
+	// used for both notifications and responses?  Should make handling
+	// must faster as unnecessary unmarshal attempts could be avoided.
+
+	// Check for notifications first.
+	if req, err := btcjson.ParseMarshaledCmd(b); err == nil {
+		// btcwallet should not be sending Requests except for
+		// notifications.  Check for a nil id.
+		if req.Id() != nil {
+			// Invalid response
+			log.Printf("[WRN] btcwallet sent a non-notification JSON-RPC Request (Id: %v)",
+				req.Id())
+			return
+		}
+
+		// Message is a notification.  Check the method and dispatch
+		// correct handler, or if no handler, log a warning.
+		if ntfnHandler, ok := notificationHandlers[req.Method()]; ok {
+			ntfnHandler(req)
+		} else {
+			// No handler; log warning.
+			log.Printf("[WRN] unhandled notification with method %v",
+				req.Method())
+		}
+		return
+	}
+
+	// b is not a Request notification, so it must be a Response.
+	// Attempt to parse it as one and handle.
+	var r btcjson.Reply
+	if err := json.Unmarshal(b, &r); err != nil {
+		log.Print("[WRN] Unable to unmarshal btcwallet message as notificatoion or response")
+		return
+	}
+
+	// Check for a valid ID.  btcgui only sends numbers as IDs, so
+	// perform an appropiate type check.
+	if r.Id == nil {
+		// Responses with no IDs cannot be handled.
+		log.Print("[WRN] Unable to process btcwallet response without ID")
+		return
+	}
+	id, ok := (*r.Id).(float64)
+	if !ok {
+		log.Printf("[WRN] Unable to process btcwallet response with non-number ID %v",
+			*r.Id)
+		return
+	}
+
+	replyHandlers.Lock()
+	defer replyHandlers.Unlock()
+	if f, ok := replyHandlers.m[uint64(id)]; ok {
+		delete(replyHandlers.m, uint64(id))
+		f(r.Result, r.Error)
+	} else {
+		log.Print("[WRN] No handler for btcwallet response")
+	}
+}
+
+type notificationHandler func(btcjson.Cmd)
+
+var notificationHandlers = map[string]notificationHandler{
+	btcws.BlockConnectedNtfnMethod:    handleBlockConnectedNtfn,
+	btcws.BlockDisconnectedNtfnMethod: handleBlockDisconnectedNtfn,
+	btcws.BtcdConnectedNtfnMethod:     handleBtcdConnectedNtfn,
+	btcws.TxNtfnMethod:                handleTxNtfn,
+	btcws.AccountBalanceNtfnMethod:    handleAccountBalanceNtfn,
+	btcws.WalletLockStateNtfnMethod:   handleWalletLockStateNtfn,
+}
+
+// handleBlockConnectedNtfn handles btcd/btcwallet blockconnected
+// notifications resulting from newly-connected blocks to the main
+// blockchain.
+func handleBlockConnectedNtfn(n btcjson.Cmd) {
+	bcn, ok := n.(*btcws.BlockConnectedNtfn)
+	if !ok {
+		log.Printf("[ERR] %v handler: unexpected type", n.Method())
+		return
+	}
+
+	updateChans.bcHeight <- bcn.Height
+}
+
+// handleBlockDisconnectedNtfn handles btcd/btcwallet blockdisconnected
+// notifications resulting from blocks disconnected from the main chain.
 //
-// TODO(jrick): pass a btcws.Notification to this func.
-func handleBtcwalletNtfn(id string, result interface{}) {
-	switch id {
-	// Global notifications
-	case "btcwallet:btcdconnected":
-		if r, ok := result.(bool); ok {
-			updateChans.btcdConnected <- r
+// TODO(jrick): handle this by rolling back tx history and balances.
+func handleBlockDisconnectedNtfn(n btcjson.Cmd) {
+	bdn, ok := n.(*btcws.BlockDisconnectedNtfn)
+	if !ok {
+		log.Printf("[ERR] %v handler: unexpected type", n.Method())
+		return
+	}
+
+	// TODO
+	_ = bdn
+}
+
+// handleBtcdConnectedNtfn handles btcwallet btcdconnected notifications,
+// updating the GUI with info about whether btcd is connected to btcwallet
+// or not.
+func handleBtcdConnectedNtfn(n btcjson.Cmd) {
+	bcn, ok := n.(*btcws.BtcdConnectedNtfn)
+	if !ok {
+		log.Printf("[ERR] %v handler: unexpected type", n.Method())
+		return
+	}
+
+	updateChans.btcdConnected <- bcn.Connected
+}
+
+// handleTxNtfn handles btcwallet newtx notifications by updating the GUI
+// with details about a new tx to or from wallet addresses.
+func handleTxNtfn(n btcjson.Cmd) {
+	tn, ok := n.(*btcws.TxNtfn)
+	if !ok {
+		log.Printf("[ERR] %v handler: unexpected type", n.Method())
+		return
+	}
+
+	// TODO(jrick): do proper filtering and display
+	// tx details for all accounts.
+	if tn.Account == "" {
+		attr, err := parseTxDetails(tn.Details)
+		if err != nil {
+			log.Printf("[ERR] %v handler: bad details: %v",
+				n.Method(), err)
+			return
 		}
+		updateChans.prependOverviewTx <- attr
+		updateChans.prependTx <- attr
+	}
+}
 
-	case "btcwallet:newblockchainheight":
-		if r, ok := result.(float64); ok {
-			updateChans.bcHeight <- int64(r)
+// handleAccountBalanceNtfn handles btcwallet accountbalance notifications by
+// updating the GUI with either a new confirmed or unconfirmed balance.
+func handleAccountBalanceNtfn(n btcjson.Cmd) {
+	abn, ok := n.(*btcws.AccountBalanceNtfn)
+	if !ok {
+		log.Printf("[ERR] %v handler: unexpected type", n.Method())
+		return
+	}
+
+	// TODO(jrick): do proper filtering and display all
+	// account balances somewhere
+	if abn.Account == "" {
+		if abn.Confirmed {
+			updateChans.balance <- abn.Balance
+		} else {
+			updateChans.unconfirmed <- abn.Balance
 		}
+	}
 
-	// Notifications per wallet (account)
-	case btcws.TxNtfnId:
-		if r, ok := result.(map[string]interface{}); ok {
-			account, ok := r["account"].(string)
-			if !ok {
-				return
-			}
-			details, ok := r["details"].(map[string]interface{})
-			if !ok {
-				return
-			}
+}
 
-			attr, err := parseTxDetails(details)
-			if err != nil {
-				return
-			}
+// handleWalletLockStateNtfn handles btcwallet walletlockstate notifications
+// by updating the GUI with whether the wallet is locked or not, setting
+// the sensitivity of various widgets for locking or unlocking the wallet.
+func handleWalletLockStateNtfn(n btcjson.Cmd) {
+	wlsn, ok := n.(*btcws.WalletLockStateNtfn)
+	if !ok {
+		log.Printf("[ERR] %v handler: unexpected type", n.Method())
+		return
+	}
 
-			// TODO(jrick): do proper filtering and display
-			// tx details for all accounts.
-			if account == "" {
-				updateChans.prependOverviewTx <- attr
-				updateChans.prependTx <- attr
-			}
-		}
-
-	case "btcwallet:accountbalance":
-		if r, ok := result.(map[string]interface{}); ok {
-			account, ok := r["account"].(string)
-			if !ok {
-				return
-			}
-			balance, ok := r["notification"].(float64)
-			if !ok {
-				return
-			}
-			// TODO(jrick): do proper filtering and display all
-			// account balances somewhere
-			if account == "" {
-				updateChans.balance <- balance
-			}
-		}
-
-	case "btcwallet:accountbalanceunconfirmed":
-		if r, ok := result.(map[string]interface{}); ok {
-			account, ok := r["account"].(string)
-			if !ok {
-				return
-			}
-			balance, ok := r["notification"].(float64)
-			if !ok {
-				return
-			}
-			// TODO(jrick): do proper filtering and display all
-			// account balances somewhere
-			if account == "" {
-				updateChans.unconfirmed <- balance
-			}
-		}
-
-	case "btcwallet:newwalletlockstate":
-		if m, ok := result.(map[string]interface{}); ok {
-			// We only care about the default account right now.
-			if m["account"].(string) == "" {
-				updateChans.lockState <- m["notification"].(bool)
-			}
-		}
-
-	default:
-		log.Printf("Unhandled message with id '%s'\n", id)
+	// TODO(jrick): do proper filtering and display all
+	// account balances somewhere
+	if wlsn.Account == "" {
+		updateChans.lockState <- wlsn.Locked
 	}
 }
 
@@ -663,10 +730,18 @@ func cmdWalletIsLocked(ws *websocket.Conn) {
 // is not set up because the GUI will be updated after a
 // "btcwallet:newwalletlockstate" notification is sent.
 func cmdWalletLock(ws *websocket.Conn) error {
-	msg, err := btcjson.CreateMessage("walletlock")
+	n := <-NewJSONID
+	msg, err := btcjson.CreateMessageWithId("walletlock", n)
 	if err != nil {
 		return err
 	}
+
+	// We don't actually care about the reply and rely on the
+	// notification to update widgets, but adding an empty handler
+	// prevents warnings printed to logging output.
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {}
+	replyHandlers.Unlock()
 
 	return websocket.Message.Send(ws, msg)
 }

@@ -340,6 +340,7 @@ var notificationHandlers = map[string]notificationHandler{
 	btcws.BlockConnectedNtfnMethod:    handleBlockConnectedNtfn,
 	btcws.BlockDisconnectedNtfnMethod: handleBlockDisconnectedNtfn,
 	btcws.BtcdConnectedNtfnMethod:     handleBtcdConnectedNtfn,
+	btcws.TxMinedNtfnMethod:           handleTxMined,
 	btcws.TxNtfnMethod:                handleTxNtfn,
 	btcws.AccountBalanceNtfnMethod:    handleAccountBalanceNtfn,
 	btcws.WalletLockStateNtfnMethod:   handleWalletLockStateNtfn,
@@ -384,6 +385,14 @@ func handleBtcdConnectedNtfn(n btcjson.Cmd) {
 	}
 
 	updateChans.btcdConnected <- bcn.Connected
+}
+
+// handleTxMined handles the btcwallet txmined notifications for transactions
+// originating from btcd's mempool and already notified with newtx, but
+// which now appear in the blockchain.
+func handleTxMined(n btcjson.Cmd) {
+	// This does nothing yet as btcgui does not show any block information
+	// for transactions.
 }
 
 // handleTxNtfn handles btcwallet newtx notifications by updating the GUI

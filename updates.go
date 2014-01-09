@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Conformal Systems LLC <info@conformal.com>
+ * Copyright (c) 2013, 2014 Conformal Systems LLC <info@conformal.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -307,6 +307,7 @@ func ProcessBtcwalletMessage(b []byte) {
 	var r btcjson.Reply
 	if err := json.Unmarshal(b, &r); err != nil {
 		log.Print("[WRN] Unable to unmarshal btcwallet message as notificatoion or response")
+		fmt.Println(string(b))
 		return
 	}
 

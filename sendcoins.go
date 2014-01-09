@@ -306,15 +306,17 @@ func createSendCoins() *gtk.Widget {
 
 			// Get amount and units and convert to float64
 			amt := r.amount.GetValue()
-			// TODO(jrick): constify these conversions
-			switch r.combo.GetActive() {
-			case 0: // BTC
-				// nothing
-			case 1: // mBTC
-				amt /= 1000
-			case 2: // uBTC
-				amt /= 1000000
-			}
+			// Combo box isn't used right now.
+			/*
+				switch r.combo.GetActive() {
+				case 0: // BTC
+					// nothing
+				case 1: // mBTC
+					amt /= 1000
+				case 2: // uBTC
+					amt /= 1000000
+				}
+			*/
 
 			sendTo[addr] = amt
 		}

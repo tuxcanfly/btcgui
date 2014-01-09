@@ -37,10 +37,7 @@ const (
 		"not yet ready to replace other Bitcoin wallet software.\n" +
 		"\n" +
 		"Running btcgui on the main Bitcoin network is currently " +
-		"disabled until the software has matured.  Instead, btcgui " +
-		"alpha operates on the Bitcoin test network (version 3). " +
-		"Support for the main Bitcoin network will be enabled in " +
-		"future versions when ready.\n" +
+		"disabled by default until the software has matured.\n" +
 		"\n" +
 		"btcgui is primarly written as a Unix GUI, and will be rough " +
 		"around the edges on other platforms.  Development of native " +
@@ -110,10 +107,9 @@ const (
 		"missing features needed for an everyday wallet " +
 		"application.\n" +
 		"\n" +
-		"Features like displaying transactions sent to and from " +
-		"owned addresses, saving others' addresses to an address " +
-		"book, and multiple account support are planned for future " +
-		"versions."
+		"Features like maintaining an address book for others' " +
+		"addresses and multiple account support are planned for " +
+		"future versions."
 
 	feedbackText = "<b>Feedback is appreciated!</b>\n" +
 		"\n" +

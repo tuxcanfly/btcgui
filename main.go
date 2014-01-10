@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/conformal/go-flags"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"io/ioutil"
@@ -75,7 +76,11 @@ func main() {
 
 	tcfg, _, err := loadConfig()
 	if err != nil {
-		PreGUIError(fmt.Errorf("Cannot open configuration:\n%v", err))
+		if e, ok := err.(*flags.Error); !ok || e.Type != flags.ErrHelp {
+			PreGUIError(fmt.Errorf("Cannot open configuration:\n%v", err))
+		} else {
+			os.Exit(1)
+		}
 	}
 	cfg = tcfg
 

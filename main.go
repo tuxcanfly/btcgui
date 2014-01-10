@@ -68,6 +68,7 @@ func main() {
 	// this dialog.
 	PreGUIErrorDialog = gtk.MessageDialogNew(nil, 0, gtk.MESSAGE_ERROR,
 		gtk.BUTTONS_OK, "An unknown error occured.")
+	PreGUIErrorDialog.SetPosition(gtk.WIN_POS_CENTER)
 	PreGUIErrorDialog.Connect("destroy", func() {
 		os.Exit(1)
 	})
@@ -114,7 +115,7 @@ func main() {
 func StartMainApplication() {
 	// Read CA file to verify a btcwallet TLS connection.
 	cafile, err := ioutil.ReadFile(cfg.CAFile)
-	if err != nil || true {
+	if err != nil {
 		IdlePreGUIError(fmt.Errorf("Cannot open CA file:\n%v", err))
 	}
 

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"io/ioutil"
@@ -29,14 +30,51 @@ import (
 // from a config file and command line flags.
 var cfg *config
 
+var PreGUIErrorDialog *gtk.MessageDialog
+
+// PreGUIError opens the pre-allocated error dialog for presenting errors
+// before the main window GUI has been completely constructed and shown.
+// The dialog is updated with the message in e.
+func PreGUIError(e error) {
+	// Update dialog with the message in e.
+	PreGUIErrorDialog.SetMarkup(e.Error())
+
+	// Run and destroy dialog.  os.Exit should be called once the
+	// dialog is destroyed.
+	PreGUIErrorDialog.Run()
+	PreGUIErrorDialog.Destroy()
+}
+
+// IdlePreGUIError runs PreGUIError within the context of the GTK main
+// event loop.  This function does not return.
+func IdlePreGUIError(e error) {
+	glib.IdleAdd(func() {
+		PreGUIError(e)
+	})
+
+	// This function should block.  However, simple adding a closure the
+	// main event loop does not block.  A channel is used to block the
+	// calling goroutine from continuing.
+	c := make(chan struct{})
+	<-c
+}
+
 func main() {
 	gtk.Init(nil)
 
+	// The first thing ever done is to create a GTK error dialog to
+	// show any errors to the user.  If any fatal errors occur before
+	// the main application window is shown, they will be shown using
+	// this dialog.
+	PreGUIErrorDialog = gtk.MessageDialogNew(nil, 0, gtk.MESSAGE_ERROR,
+		gtk.BUTTONS_OK, "An unknown error occured.")
+	PreGUIErrorDialog.Connect("destroy", func() {
+		os.Exit(1)
+	})
+
 	tcfg, _, err := loadConfig()
 	if err != nil {
-		// TODO(jrick): If config fails to load, open warning dialog
-		// window instead of dying and never showing anything.
-		log.Fatal(err)
+		PreGUIError(fmt.Errorf("Cannot open configuration:\n%v", err))
 	}
 	cfg = tcfg
 
@@ -53,8 +91,7 @@ func main() {
 		d, err := CreateTutorialDialog(nil)
 		if err != nil {
 			// Nothing to show.
-			// TODO(jrick): Log warning to file.
-			log.Fatal(err)
+			PreGUIError(fmt.Errorf("Cannot create tutorial dialog:\n%v", err))
 		}
 		d.ShowAll()
 		d.Run()
@@ -75,11 +112,16 @@ func main() {
 // This is written to be called as a goroutine outside of the main GTK
 // loop.
 func StartMainApplication() {
+	// Read CA file to verify a btcwallet TLS connection.
+	cafile, err := ioutil.ReadFile(cfg.CAFile)
+	if err != nil || true {
+		IdlePreGUIError(fmt.Errorf("Cannot open CA file:\n%v", err))
+	}
+
 	glib.IdleAdd(func() {
 		w, err := CreateWindow()
 		if err != nil {
-			// TODO(jrick): log error to file.
-			log.Fatal(err)
+			PreGUIError(fmt.Errorf("Cannot create application window:\n%v", err))
 		}
 		w.ShowAll()
 	})
@@ -87,13 +129,6 @@ func StartMainApplication() {
 	// Write current application version to file.
 	if err := version.SaveToDataDir(cfg); err != nil {
 		log.Print(err)
-	}
-
-	// Read CA file to verify a btcwallet TLS connection.
-	cafile, err := ioutil.ReadFile(cfg.CAFile)
-	if err != nil {
-		log.Printf("[ERR] cannot open CA file: %v", err)
-		os.Exit(1)
 	}
 
 	// Begin generating new IDs for JSON calls.

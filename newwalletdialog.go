@@ -89,7 +89,7 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.SetAlignment(gtk.ALIGN_END, gtk.ALIGN_CENTER)
+	l.SetAlignment(1.0, 0.5)
 	grid.Attach(l, 0, 1, 1, 1)
 
 	passphrase, err := gtk.EntryNew()
@@ -107,7 +107,7 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.SetAlignment(gtk.ALIGN_END, gtk.ALIGN_CENTER)
+	l.SetAlignment(1.0, 0.5)
 	grid.Attach(l, 0, 2, 1, 1)
 
 	repeated, err := gtk.EntryNew()

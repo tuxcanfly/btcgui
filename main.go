@@ -54,10 +54,9 @@ func IdlePreGUIError(e error) {
 	})
 
 	// This function should block.  However, simple adding a closure the
-	// main event loop does not block.  A channel is used to block the
+	// main event loop does not block.  Use an empty select to prevent the
 	// calling goroutine from continuing.
-	c := make(chan struct{})
-	<-c
+	select {}
 }
 
 func main() {

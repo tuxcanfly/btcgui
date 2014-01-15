@@ -1,2 +1,26 @@
+============================================================================
+User visible changes for btcgui
+  A graphical frontend for btcwallet, written in Go
+============================================================================
+
+Changes in 0.2.0 (Tue Jan 14 2014)
+  - Enable mainnet support (disabled by default, use --mainnet to enable)
+
+  - Add transaction details to overview and transaction panes
+
+  - Use TLS and Basic HTTP authentication to access btcwallet RPC
+
+  - Replace --port option with --connect to specify both host/ip and port
+
+  - Show the unlock dialog when a request requires an unlocked wallet after
+    the keypool is exhausted
+
+  - Disable combobox to select the bitcoin unit (BTC, mBTC, uBTC) as the
+    value was ignored when sending transactions
+
+  - Present all fatal startup errors in a pre-allocated dialog
+
+  - Add sample configuration file (https://github.com/conformal/btcgui/2)
+
 Initial Release 0.1.0 (Wed Nov 13 2013)
   - Initial release

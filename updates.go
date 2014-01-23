@@ -28,7 +28,6 @@ import (
 	"github.com/conformal/btcws"
 	"github.com/conformal/go-socks"
 	"github.com/conformal/gotk3/glib"
-	"github.com/conformal/gotk3/gtk"
 	"log"
 	"math"
 	"strconv"
@@ -914,9 +913,8 @@ func updateAddresses() {
 		for i := range addrs {
 			addr := addrs[i]
 			glib.IdleAdd(func() {
-				var iter gtk.TreeIter
-				RecvCoins.Store.Append(&iter)
-				RecvCoins.Store.Set(&iter, []int{1},
+				iter := RecvCoins.Store.Append()
+				RecvCoins.Store.Set(iter, []int{1},
 					[]interface{}{addr})
 			})
 		}
@@ -1044,10 +1042,9 @@ func updateTransactions() {
 		select {
 		case attr := <-updateChans.appendTx:
 			glib.IdleAdd(func() {
-				var iter gtk.TreeIter
-				txWidgets.store.Append(&iter)
+				iter := txWidgets.store.Append()
 				const layout = "01/02/2006"
-				txWidgets.store.Set(&iter, []int{0, 1, 2, 3},
+				txWidgets.store.Set(iter, []int{0, 1, 2, 3},
 					[]interface{}{attr.Date.Format(layout),
 						attr.Direction.String(),
 						attr.Address,
@@ -1079,10 +1076,9 @@ func updateTransactions() {
 
 		case attr := <-updateChans.prependTx:
 			glib.IdleAdd(func() {
-				var iter gtk.TreeIter
-				txWidgets.store.Prepend(&iter)
+				iter := txWidgets.store.Prepend()
 				const layout = "01/02/2006"
-				txWidgets.store.Set(&iter, []int{0, 1, 2, 3},
+				txWidgets.store.Set(iter, []int{0, 1, 2, 3},
 					[]interface{}{attr.Date.Format(layout),
 						attr.Direction.String(),
 						attr.Address,

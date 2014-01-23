@@ -134,26 +134,25 @@ func createRecipient(rmFn func(*glib.Object, *recipient)) *recipient {
 	ret.amount = amount
 	amounts.Add(amount)
 
-	var iter gtk.TreeIter
 	ls, err := gtk.ListStoreNew(glib.TYPE_STRING)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ls.Append(&iter)
+	iter := ls.Append()
 	choices := []string{"BTC", "mBTC", "μBTC"}
 	s := make([]interface{}, len(choices))
 	for i, v := range choices {
 		s[i] = v
 	}
-	if err := ls.Set(&iter, []int{0}, []interface{}{"BTC"}); err != nil {
+	if err := ls.Set(iter, []int{0}, []interface{}{"BTC"}); err != nil {
 		fmt.Println(err)
 	}
-	ls.Append(&iter)
-	if err := ls.Set(&iter, []int{0}, []interface{}{"mBTC"}); err != nil {
+	iter = ls.Append()
+	if err := ls.Set(iter, []int{0}, []interface{}{"mBTC"}); err != nil {
 		fmt.Println(err)
 	}
-	ls.Append(&iter)
-	if err := ls.Set(&iter, []int{0}, []interface{}{"μBTC"}); err != nil {
+	iter = ls.Append()
+	if err := ls.Set(iter, []int{0}, []interface{}{"μBTC"}); err != nil {
 		fmt.Println(err)
 	}
 

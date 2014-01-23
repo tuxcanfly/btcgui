@@ -99,9 +99,8 @@ func createAddrBook() *gtk.Widget {
 	tv.AppendColumn(col)
 
 	// put in an example address
-	var iter gtk.TreeIter
-	store.Append(&iter)
-	store.Set(&iter, []int{0, 1}, []interface{}{"editable label", "01234567890"})
+	iter := store.Append()
+	store.Set(iter, []int{0, 1}, []interface{}{"editable label", "01234567890"})
 
 	buttons, err := gtk.GridNew()
 	if err != nil {
@@ -114,9 +113,8 @@ func createAddrBook() *gtk.Widget {
 	}
 	newAddr.SetSizeRequest(150, -1)
 	newAddr.Connect("clicked", func() {
-		var iter gtk.TreeIter
-		store.Append(&iter)
-		store.Set(&iter, []int{0, 1}, []interface{}{"", "new address"})
+		iter := store.Append()
+		store.Set(iter, []int{0, 1}, []interface{}{"", "new address"})
 	})
 	buttons.Add(newAddr)
 

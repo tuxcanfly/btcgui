@@ -93,9 +93,8 @@ func createRecvCoins() *gtk.Widget {
 				})
 			} else if addr, ok := reply.(string); ok {
 				glib.IdleAdd(func() {
-					var iter gtk.TreeIter
-					RecvCoins.Store.Append(&iter)
-					RecvCoins.Store.Set(&iter, []int{0, 1},
+					iter := RecvCoins.Store.Append()
+					RecvCoins.Store.Set(iter, []int{0, 1},
 						[]interface{}{"", addr})
 				})
 			}

@@ -514,17 +514,8 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 // (or account), encrypted with the supplied passphrase.
 func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 	n := <-NewJSONID
-	m := &btcjson.Message{
-		Jsonrpc: "1.0",
-		Id:      n,
-		Method:  "createencryptedwallet",
-		Params: []interface{}{
-			params.name,
-			params.desc,
-			params.passphrase,
-		},
-	}
-	msg, err := json.Marshal(m)
+	cmd := btcws.NewCreateEncryptedWalletCmd(n, params.passphrase)
+	msg, err := json.Marshal(cmd)
 	if err != nil {
 		triggerReplies.walletCreationErr <- err
 		return

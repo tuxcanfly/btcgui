@@ -24,8 +24,6 @@ import (
 
 // NewWalletParams holds the parameters needed to create a new wallet.
 type NewWalletParams struct {
-	name       string
-	desc       string
 	passphrase string
 }
 
@@ -161,8 +159,6 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 			if pStr == rStr {
 				go func() {
 					triggers.newWallet <- &NewWalletParams{
-						name:       "",
-						desc:       "",
 						passphrase: pStr,
 					}
 

@@ -3,6 +3,9 @@ User visible changes for btcgui
   A graphical frontend for btcwallet, written in Go
 ============================================================================
 
+Changes in 0.2.1 (Mon Feb 10 2014)
+  - API changes and general code cleanup
+
 Changes in 0.2.0 (Tue Jan 14 2014)
   - Enable mainnet support (disabled by default, use --mainnet to enable)
 

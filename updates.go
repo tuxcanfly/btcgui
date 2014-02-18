@@ -128,6 +128,8 @@ var (
 
 	walletReqFuncs = []func(*websocket.Conn){
 		cmdGetAddressesByAccount,
+		cmdGetBalance,
+		cmdGetUnconfirmedBalance,
 		cmdListAllTransactions,
 		cmdWalletIsLocked,
 	}
@@ -574,6 +576,85 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 			}
 			updateChans.addrs <- []string{}
 		}
+	}
+	replyHandlers.Unlock()
+
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		updateChans.addrs <- []string{}
+	}
+}
+
+// cmdGetBalance requests the current balance (calculated with the default
+// one confirmation).
+func cmdGetBalance(ws *websocket.Conn) {
+	n := <-NewJSONID
+	cmd, err := btcjson.NewGetBalanceCmd(n)
+	if err != nil {
+		log.Printf("[ERR] cannot create getbalance command.")
+		return
+	}
+	msg, _ := cmd.MarshalJSON()
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if err != nil {
+			log.Printf("[ERR] getbalance: %v", err)
+			return
+		}
+
+		if result == nil {
+			return
+		}
+
+		bal, ok := result.(float64)
+		if !ok {
+			log.Printf("[ERR] getbalance reply is not a number.")
+			return
+		}
+
+		updateChans.balance <- bal
+	}
+	replyHandlers.Unlock()
+
+	if err = websocket.Message.Send(ws, msg); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
+		updateChans.addrs <- []string{}
+	}
+}
+
+// cmdGetUnconfirmedBalance requests the current unconfirmed balance.
+func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
+	n := <-NewJSONID
+	cmd, err := btcws.NewGetUnconfirmedBalanceCmd(n)
+	if err != nil {
+		log.Printf("[ERR] cannot create getunconfirmedbalance command.")
+		return
+	}
+	msg, _ := cmd.MarshalJSON()
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if err != nil {
+			log.Printf("[ERR] getunconfirmedbalance: %v", err)
+			return
+		}
+
+		if result == nil {
+			return
+		}
+
+		bal, ok := result.(float64)
+		if !ok {
+			log.Printf("[ERR] getunconfirmedbalance reply is not a number.")
+			return
+		}
+
+		updateChans.unconfirmed <- bal
 	}
 	replyHandlers.Unlock()
 

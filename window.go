@@ -32,7 +32,11 @@ func CreateWindow() (*gtk.Window, error) {
 	if err != nil {
 		return nil, err
 	}
-	mainWindow.SetTitle("btcgui")
+	title := "btcgui"
+	if !cfg.MainNet {
+		title += " [TESTNET]"
+	}
+	mainWindow.SetTitle(title)
 	mainWindow.Connect("destroy", func() {
 		gtk.MainQuit()
 	})

@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	defualtCAFilename     = "btcwallet.cert"
+	defaultCAFilename     = "btcwallet.cert"
 	defaultConfigFilename = "btcgui.conf"
 	defaultDataDirname    = "data"
 	defaultBtcNet         = btcwire.TestNet3
@@ -38,7 +38,7 @@ const (
 var (
 	btcguiHomeDir          = btcutil.AppDataDir("btcgui", false)
 	btcwalletHomeDir       = btcutil.AppDataDir("btcwallet", false)
-	defaultCAFile          = filepath.Join(btcguiHomeDir, defualtCAFilename)
+	defaultCAFile          = filepath.Join(btcguiHomeDir, defaultCAFilename)
 	btcwalletHomedirCAFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
 	defaultConfigFile      = filepath.Join(btcguiHomeDir, defaultConfigFilename)
 	defaultDataDir         = filepath.Join(btcguiHomeDir, defaultDataDirname)

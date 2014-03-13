@@ -129,6 +129,7 @@ var (
 	walletReqFuncs = []func(*websocket.Conn){
 		cmdGetAddressesByAccount,
 		cmdGetBalance,
+		cmdGetBlockCount,
 		cmdGetUnconfirmedBalance,
 		cmdListAllTransactions,
 		cmdWalletIsLocked,
@@ -654,6 +655,44 @@ func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
 		updateChans.addrs <- []string{}
+	}
+}
+
+// cmdGetBlockCount request the height of the best chain.
+func cmdGetBlockCount(ws *websocket.Conn) {
+	n := <-NewJSONID
+	cmd, err := btcjson.NewGetBlockCountCmd(n)
+	if err != nil {
+		log.Printf("[ERR] cannot create getblockcount command.")
+		return
+	}
+	mcmd, _ := cmd.MarshalJSON()
+
+	replyHandlers.Lock()
+	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {
+		if err != nil {
+			log.Printf("[ERR] getblockcount: %v", err)
+			return
+		}
+
+		if result == nil {
+			return
+		}
+
+		fcount, ok := result.(float64)
+		if !ok {
+			log.Printf("[ERR] getblockcount result is not a number.")
+			return
+		}
+
+		updateChans.bcHeight <- int32(fcount)
+	}
+	replyHandlers.Unlock()
+
+	if err = websocket.Message.Send(ws, mcmd); err != nil {
+		replyHandlers.Lock()
+		delete(replyHandlers.m, n)
+		replyHandlers.Unlock()
 	}
 }
 

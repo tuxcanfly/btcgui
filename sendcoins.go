@@ -269,38 +269,32 @@ func createSendCoins() *gtk.Widget {
 			r := e.Value.(*recipient)
 
 			// Get and validate address
-			addr, err := r.payTo.GetText()
+			addrStr, err := r.payTo.GetText()
 			if err != nil {
 				d := errorDialog("Error getting payment address", err.Error())
 				d.Run()
 				d.Destroy()
 				return
 			}
-			_, net, err := btcutil.DecodeAddress(addr)
+
+			currentNet := btcwire.TestNet3
+			if cfg.MainNet {
+				currentNet = btcwire.MainNet
+			}
+			addr, err := btcutil.DecodeAddress(addrStr, currentNet)
 			if err != nil {
 				d := errorDialog("Invalid payment address",
-					fmt.Sprintf("'%v' is not a valid payment address", addr))
+					fmt.Sprintf("'%v' is not a valid payment address", addrStr))
 				d.Run()
 				d.Destroy()
 				return
 			}
-			switch net {
-			case btcwire.MainNet:
-				if !cfg.MainNet {
-					d := errorDialog("Invalid payment address",
-						fmt.Sprintf("'%v' is a mainnet address", addr))
-					d.Run()
-					d.Destroy()
-					return
-				}
-			case btcwire.TestNet3:
-				if cfg.MainNet {
-					d := errorDialog("Invalid payment address",
-						fmt.Sprintf("'%v' is a testnet address", addr))
-					d.Run()
-					d.Destroy()
-					return
-				}
+			if !addr.IsForNet(currentNet) {
+				d := errorDialog("Bad address",
+					fmt.Sprintf("Address '%s' is for wrong bitcoin network", addrStr))
+				d.Run()
+				d.Destroy()
+				return
 			}
 
 			// Get amount and units and convert to float64
@@ -317,7 +311,7 @@ func createSendCoins() *gtk.Widget {
 				}
 			*/
 
-			sendTo[addr] = amt
+			sendTo[addrStr] = amt
 		}
 
 		go txSenderAndReplyListener(sendTo)

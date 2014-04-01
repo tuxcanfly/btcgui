@@ -134,7 +134,7 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	dialog.SetPosition(gtk.WIN_POS_CENTER_ON_PARENT)
 	dialog.ShowAll()
 
-	dialog.Connect("response", func(_ *glib.Object, rt gtk.ResponseType) {
+	dialog.Connect("response", func(_ *gtk.Dialog, rt gtk.ResponseType) {
 		switch rt {
 		case gtk.RESPONSE_OK:
 			pStr, err := passphrase.GetText()

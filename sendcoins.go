@@ -47,8 +47,8 @@ var (
 	}{}
 )
 
-func removeRecipentFn(grid *gtk.Grid) func(*glib.Object, *recipient) {
-	return func(_ *glib.Object, r *recipient) {
+func removeRecipentFn(grid *gtk.Grid) func(*gtk.Button, *recipient) {
+	return func(_ *gtk.Button, r *recipient) {
 		for e := recipients.Front(); e != nil; e = e.Next() {
 			if r == e.Value {
 				recipients.Remove(e)
@@ -63,7 +63,7 @@ func removeRecipentFn(grid *gtk.Grid) func(*glib.Object, *recipient) {
 	}
 }
 
-func createRecipient(rmFn func(*glib.Object, *recipient)) *recipient {
+func createRecipient(rmFn func(*gtk.Button, *recipient)) *recipient {
 	ret := new(recipient)
 	ret.n = recipients.Len()
 

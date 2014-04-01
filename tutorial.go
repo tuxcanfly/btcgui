@@ -17,7 +17,6 @@
 package main
 
 import (
-	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 )
 
@@ -222,7 +221,7 @@ func CreateTutorialDialog(appWindow *gtk.Window) (*gtk.Dialog, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.Connect("response", func(_ *glib.Object, rt gtk.ResponseType) {
+	d.Connect("response", func(_ *gtk.Dialog, rt gtk.ResponseType) {
 		if rt == gtk.RESPONSE_CLOSE {
 			// Using w.Close() would be nice but it needs GTK 3.10.
 			d.Hide()

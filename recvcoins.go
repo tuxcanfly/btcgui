@@ -49,7 +49,7 @@ func createRecvCoins() *gtk.Widget {
 	}
 	renderer.Set("editable", true)
 	renderer.Set("editable-set", true)
-	renderer.Connect("edited", func(_ *glib.Object, path, text string) {
+	renderer.Connect("edited", func(_ *gtk.CellRendererText, path, text string) {
 		iter, err := store.GetIterFromString(path)
 		if err == nil {
 			store.Set(iter, []int{0}, []interface{}{text})

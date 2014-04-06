@@ -134,9 +134,9 @@ func createNewWalletDialog() (*gtk.Dialog, error) {
 	dialog.SetPosition(gtk.WIN_POS_CENTER_ON_PARENT)
 	dialog.ShowAll()
 
-        // Use an IObject as the receiver object.  This may be called with both
-        // a *glib.Object and *gtk.Dialog due to where the signals originate
-        // from.
+	// Use an IObject as the receiver object.  This may be called with both
+	// a *glib.Object and *gtk.Dialog due to where the signals originate
+	// from.
 	dialog.Connect("response", func(_ glib.IObject, rt gtk.ResponseType) {
 		switch rt {
 		case gtk.RESPONSE_OK:

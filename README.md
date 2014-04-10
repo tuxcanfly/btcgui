@@ -29,18 +29,27 @@ https://opensource.conformal.com/packages/windows/btcdsuite/
 
 - Install GTK.  As btcgui relies on
   [GoTK3](https://github.com/conformal/gotk3) for GTK binding support, a
-  version compatible with GoTK3 is required.  If not using the latest
-  supported version, an additional ```-tags gtk_#_#``` with your
-  installed version must be specified with the ``go get`` command below
-  when installing btcgui.  See the
-  [GoTK3](https://github.com/conformal/gotk3) README for how build tags
-  work.
+  version compatible with GoTK3 is required.
 
-- Run the following commands to obtain btcgui, all dependencies, and install it:
+- Run the following commands to install btcwallet and btcd:
 ```bash
 $ go get -u -v github.com/conformal/btcd/...
 $ go get -u -v github.com/conformal/btcwallet/...
-$ go get -u -v github.com/conformal/btcgui/...
+```
+
+- Run the following command to install btcgui, using the correct GoTK3
+  build tag if you are not running the latest supported GTK:
+```bash
+$ go get [-u gtk_#_#] -v github.com/conformal/btcwallet/...
+```
+  Alternatively, a Makefile is provided which will determine and use the
+  correct GTK build tag.  You will have to clone the repo manually first,
+  though.
+```bash
+$ cd $GOPATH/src
+$ git clone https://github.com/conformal/btcgui.git
+$ cd btcgui
+$ make
 ```
 
 - btcd, btcwallet, and btcgui will now be installed in either ```$GOROOT/bin```
@@ -58,14 +67,14 @@ https://opensource.conformal.com/packages/windows/btcdsuite/
 ### Linux/BSD/POSIX - Build from Source
 
 - Run the following commands to update btcgui, all dependencies, and install it:
-
 ```bash
 $ go get -u -v github.com/conformal/btcd/...
 $ go get -u -v github.com/conformal/btcwallet/...
-$ go get -u -v github.com/conformal/btcgui/...
+$ go get [-tags gtk_#_#] -u -v github.com/conformal/btcgui/...
 ```
-
-Remember to specify the correct GoTK3 build tags when building btcgui.
+  Alternatively, running ```make update``` from the btcgui directory will
+  determine the correct GTK build tag for your system and call ```go get```
+  for you.
 
 ## Getting Started
 

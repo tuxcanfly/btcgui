@@ -17,12 +17,16 @@
 package main
 
 import (
-	"github.com/conformal/btcutil"
-	"github.com/conformal/gotk3/glib"
-	"github.com/conformal/gotk3/gtk"
+	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/conformal/btcjson"
+	"github.com/conformal/btcutil"
+	"github.com/conformal/gotk3/glib"
+	"github.com/conformal/gotk3/gtk"
 )
 
 type txDirection int
@@ -55,6 +59,85 @@ type TxAttributes struct {
 	Address   string
 	Amount    int64 // measured in satoshis
 	Date      time.Time
+}
+
+func NewTxAttributesFromJSON(r *btcjson.ListTransactionsResult) (*TxAttributes, error) {
+	var direction txDirection
+	switch r.Category {
+	case "send":
+		direction = Send
+
+	case "receive":
+		direction = Recv
+
+	default: // TODO: support additional listtransaction categories.
+		return nil, fmt.Errorf("unsupported tx category: %v", r.Category)
+	}
+
+	amount, err := btcjson.JSONToAmount(r.Amount)
+	if err != nil {
+		return nil, fmt.Errorf("invalid amount: %v", err)
+	}
+
+	return &TxAttributes{
+		Direction: direction,
+		Address:   r.Address,
+		Amount:    amount,
+		Date:      time.Unix(r.TimeReceived, 0),
+	}, nil
+}
+
+// TODO(jrick): This must be removed.  It is only being kept around because
+// *all* responses are currently being sent as the nasty types determined
+// by encoding/json instead of the correct btcjson result type.
+func NewTxAttributesFromMap(m map[string]interface{}) (*TxAttributes, error) {
+	var direction txDirection
+	category, ok := m["category"].(string)
+	if !ok {
+		return nil, errors.New("unspecified category")
+	}
+	switch category {
+	case "send":
+		direction = Send
+
+	case "receive":
+		direction = Recv
+
+	default: // TODO: support additional listtransaction categories.
+		return nil, fmt.Errorf("unsupported tx category: %v", category)
+	}
+
+	address, ok := m["address"].(string)
+	if !ok {
+		return nil, errors.New("unspecified address")
+	}
+
+	famount, ok := m["amount"].(float64)
+	if !ok {
+		return nil, errors.New("unspecified amount")
+	}
+	amount, err := btcjson.JSONToAmount(famount)
+	if !ok {
+		return nil, fmt.Errorf("invalid amount: %v", err)
+	}
+
+	funixDate, ok := m["timereceived"].(float64)
+	if !ok {
+		return nil, errors.New("unspecified time")
+	}
+	if fblockTime, ok := m["blocktime"].(float64); ok {
+		if fblockTime < funixDate {
+			funixDate = fblockTime
+		}
+	}
+	unixDate := int64(funixDate)
+
+	return &TxAttributes{
+		Direction: direction,
+		Address:   address,
+		Amount:    amount,
+		Date:      time.Unix(unixDate, 0),
+	}, nil
 }
 
 var txWidgets struct {

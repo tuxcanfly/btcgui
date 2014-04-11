@@ -32,7 +32,6 @@ import (
 	"math"
 	"strconv"
 	"sync"
-	"time"
 )
 
 const (
@@ -400,7 +399,7 @@ func handleTxNtfn(n btcjson.Cmd) {
 	// TODO(jrick): do proper filtering and display
 	// tx details for all accounts.
 	if tn.Account == "" {
-		attr, err := parseTxDetails(tn.Details)
+		attr, err := NewTxAttributesFromJSON(tn.Details)
 		if err != nil {
 			log.Printf("[ERR] %v handler: bad details: %v",
 				n.Method(), err)
@@ -731,7 +730,7 @@ func cmdListAllTransactions(ws *websocket.Conn) {
 				return
 			}
 
-			txAttr, err := parseTxDetails(m)
+			txAttr, err := NewTxAttributesFromMap(m)
 			if err != nil {
 				log.Printf("[ERR] listalltransactions: %v", err)
 				return
@@ -751,56 +750,6 @@ func cmdListAllTransactions(ws *websocket.Conn) {
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
 	}
-}
-
-func parseTxDetails(m map[string]interface{}) (*TxAttributes, error) {
-	var direction txDirection
-	category, ok := m["category"].(string)
-	if !ok {
-		return nil, errors.New("unspecified category")
-	}
-	switch category {
-	case "send":
-		direction = Send
-
-	case "receive":
-		direction = Recv
-
-	default: // TODO: support additional listtransaction categories.
-		return nil, fmt.Errorf("unsupported tx category: %v", category)
-	}
-
-	address, ok := m["address"].(string)
-	if !ok {
-		return nil, errors.New("unspecified address")
-	}
-
-	famount, ok := m["amount"].(float64)
-	if !ok {
-		return nil, errors.New("unspecified amount")
-	}
-	amount, err := btcjson.JSONToAmount(famount)
-	if !ok {
-		return nil, fmt.Errorf("invalid amount: %v", err)
-	}
-
-	funixDate, ok := m["timereceived"].(float64)
-	if !ok {
-		return nil, errors.New("unspecified time")
-	}
-	if fblockTime, ok := m["blocktime"].(float64); ok {
-		if fblockTime < funixDate {
-			funixDate = fblockTime
-		}
-	}
-	unixDate := int64(funixDate)
-
-	return &TxAttributes{
-		Direction: direction,
-		Address:   address,
-		Amount:    amount,
-		Date:      time.Unix(unixDate, 0),
-	}, nil
 }
 
 // cmdWalletIsLocked requests the current lock state of the

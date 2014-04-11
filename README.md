@@ -46,7 +46,7 @@ $ go get [-tags gtk_#_#] -u -v github.com/conformal/btcwallet/...
   correct GTK build tag.  You will have to clone the repo manually first,
   though.
 ```bash
-$ cd $GOPATH/src
+$ cd $GOPATH/src/github.com/conformal/
 $ git clone https://github.com/conformal/btcgui.git
 $ cd btcgui
 $ make

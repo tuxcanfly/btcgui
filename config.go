@@ -47,7 +47,7 @@ var (
 type config struct {
 	ShowVersion bool   `short:"V" long:"version" description:"Display version information and exit"`
 	CAFile      string `long:"cafile" description:"File containing root certificates to authenticate a TLS connections with btcwallet"`
-	Connect     string `short:"c" long:"connect" description:"Server and port of btcwallet instance to connect to (default localhost:18332, mainnet: localhost:8332)"`
+	RPCConnect  string `short:"c" long:"rpcconnect" description:"Hostname/IP and port of btcwallet RPC server to connect to (default localhost:18332, mainnet: localhost:8332)"`
 	ConfigFile  string `short:"C" long:"configfile" description:"Path to configuration file"`
 	Username    string `short:"u" long:"username" description:"Username for btcwallet authorization"`
 	Password    string `short:"P" long:"password" description:"Password for btcwallet authorization"`
@@ -192,8 +192,8 @@ func loadConfig() (*config, []string, error) {
 		activeNetParams = netParams(btcwire.MainNet)
 	}
 
-	if cfg.Connect == "" {
-		cfg.Connect = activeNetParams.connect
+	if cfg.RPCConnect == "" {
+		cfg.RPCConnect = activeNetParams.connect
 	}
 
 	// If CAFile is unset, choose either the copy or local btcd cert.
@@ -203,7 +203,7 @@ func loadConfig() (*config, []string, error) {
 		// If the CA copy does not exist, check if we're connecting to
 		// a local btcwalles and switch to its RPC cert if it exists.
 		if !fileExists(cfg.CAFile) {
-			host, _, err := net.SplitHostPort(cfg.Connect)
+			host, _, err := net.SplitHostPort(cfg.RPCConnect)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -223,7 +223,7 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Add default port to connect flag if missing.
-	cfg.Connect = normalizeAddress(cfg.Connect, activeNetParams.port)
+	cfg.RPCConnect = normalizeAddress(cfg.RPCConnect, activeNetParams.port)
 
 	// Expand environment variables and leading ~ for filepaths.
 	cfg.CAFile = cleanAndExpandPath(cfg.CAFile)

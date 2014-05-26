@@ -6,7 +6,7 @@ User visible changes for btcgui
 Changes in 0.2.2 (Sun May 25 2014)
   - Add indicator in title for the bitcoin network btcgui is running on
 
-  - Rename connect option to rpcconnect to match a similar change mabe
+  - Rename connect option to rpcconnect to match a similar change made
     by btcwallet
 
   - Add build support for GTK 3.12
@@ -14,7 +14,7 @@ Changes in 0.2.2 (Sun May 25 2014)
   - Add BSD and GNU Makefiles to build, install, or update with the correct
     gotk3 GTK build tag
 
-  - Updates for dependancy API changes and minor code cleanup
+  - Updates for dependency API changes and minor code cleanup
 
 Changes in 0.2.1 (Mon Feb 10 2014)
   - API changes and general code cleanup

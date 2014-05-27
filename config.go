@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"github.com/conformal/btcutil"
-	"github.com/conformal/btcwire"
 	"github.com/conformal/go-flags"
 	"log"
 	"net"
@@ -32,7 +31,6 @@ const (
 	defaultCAFilename     = "btcwallet.cert"
 	defaultConfigFilename = "btcgui.conf"
 	defaultDataDirname    = "data"
-	defaultBtcNet         = btcwire.TestNet3
 )
 
 var (
@@ -189,11 +187,11 @@ func loadConfig() (*config, []string, error) {
 
 	// Choose the active network params based on the mainnet net flag.
 	if cfg.MainNet {
-		activeNetParams = netParams(btcwire.MainNet)
+		activeNet = mainNetParams
 	}
 
 	if cfg.RPCConnect == "" {
-		cfg.RPCConnect = activeNetParams.connect
+		cfg.RPCConnect = activeNet.connect
 	}
 
 	// If CAFile is unset, choose either the copy or local btcd cert.
@@ -223,7 +221,7 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	// Add default port to connect flag if missing.
-	cfg.RPCConnect = normalizeAddress(cfg.RPCConnect, activeNetParams.port)
+	cfg.RPCConnect = normalizeAddress(cfg.RPCConnect, activeNet.port)
 
 	// Expand environment variables and leading ~ for filepaths.
 	cfg.CAFile = cleanAndExpandPath(cfg.CAFile)

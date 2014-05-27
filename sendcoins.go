@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
-	"github.com/conformal/btcwire"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 	"log"
@@ -277,11 +276,7 @@ func createSendCoins() *gtk.Widget {
 				return
 			}
 
-			currentNet := btcwire.TestNet3
-			if cfg.MainNet {
-				currentNet = btcwire.MainNet
-			}
-			addr, err := btcutil.DecodeAddress(addrStr, currentNet)
+			addr, err := btcutil.DecodeAddress(addrStr, activeNet.Params)
 			if err != nil {
 				d := errorDialog("Invalid payment address",
 					fmt.Sprintf("'%v' is not a valid payment address", addrStr))
@@ -289,7 +284,7 @@ func createSendCoins() *gtk.Widget {
 				d.Destroy()
 				return
 			}
-			if !addr.IsForNet(currentNet) {
+			if !addr.IsForNet(activeNet.Params) {
 				d := errorDialog("Bad address",
 					fmt.Sprintf("Address '%s' is for wrong bitcoin network", addrStr))
 				d.Run()

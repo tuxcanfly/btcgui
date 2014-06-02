@@ -34,7 +34,7 @@ func CreateWindow() (*gtk.Window, error) {
 	}
 	title := "btcgui"
 	if !cfg.MainNet {
-		title += " [TESTNET]"
+		title += " [" + activeNet.Name + "]"
 	}
 	mainWindow.SetTitle(title)
 	mainWindow.Connect("destroy", func() {

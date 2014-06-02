@@ -50,6 +50,7 @@ type config struct {
 	Username    string `short:"u" long:"username" description:"Username for btcwallet authorization"`
 	Password    string `short:"P" long:"password" description:"Password for btcwallet authorization"`
 	MainNet     bool   `long:"mainnet" description:"Use the main Bitcoin network (default testnet3)"`
+	SimNet      bool   `long:"simnet" description:"Use the simulation Bitcoin test network (default testnet3)"`
 	Proxy       string `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
 	ProxyUser   string `long:"proxyuser" description:"Username for proxy server"`
 	ProxyPass   string `long:"proxypass" default-mask:"-" description:"Password for proxy server"`
@@ -185,9 +186,29 @@ func loadConfig() (*config, []string, error) {
 		log.Printf("[WARN] %v", configFileError)
 	}
 
-	// Choose the active network params based on the mainnet net flag.
+	// Multiple networks can't be selected simultaneously.
+	numNets := 0
 	if cfg.MainNet {
+		numNets++
+	}
+	if cfg.SimNet {
+		numNets++
+	}
+	if numNets > 1 {
+		str := "%s: The mainnet and simnet params can't be used " +
+			"togther -- choose one"
+		err := fmt.Errorf(str, "loadConfig")
+		fmt.Fprintln(os.Stderr, err)
+		parser.WriteHelp(os.Stderr)
+		return nil, nil, err
+	}
+
+	// Choose the active network params based on the mainnet net flag.
+	switch {
+	case cfg.MainNet:
 		activeNet = mainNetParams
+	case cfg.SimNet:
+		activeNet = simNetParams
 	}
 
 	if cfg.RPCConnect == "" {

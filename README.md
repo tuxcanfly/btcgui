@@ -4,8 +4,7 @@ btcgui
 [![Build Status](https://travis-ci.org/conformal/btcgui.png?branch=master)]
 (https://travis-ci.org/conformal/btcgui)
 
-btcgui is a graphical frontend to btcwallet and btcd written using
-gotk3.
+btcgui is a graphical client for btcwallet and btcd written using gotk3.
 
 Full btcwallet installation instructions can be found
 [here](https://github.com/conformal/btcwallet).

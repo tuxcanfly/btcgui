@@ -170,7 +170,7 @@ func ListenAndUpdate(certificates []byte, c chan error) {
 	})
 
 	// Connect to websocket.
-	url := fmt.Sprintf("wss://%s/frontend", cfg.RPCConnect)
+	url := fmt.Sprintf("wss://%s/ws", cfg.RPCConnect)
 	config, err := websocket.NewConfig(url, "https://localhost/")
 	if err != nil {
 		log.Printf("[ERR] cannot create websocket config: %v", err)

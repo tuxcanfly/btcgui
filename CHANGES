@@ -1,6 +1,6 @@
 ============================================================================
 User visible changes for btcgui
-  A graphical frontend for btcwallet, written in Go
+  A graphical client for btcwallet, written in Go
 ============================================================================
 
 Changes in 0.2.2 (Sun May 25 2014)

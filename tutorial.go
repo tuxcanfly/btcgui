@@ -59,7 +59,7 @@ const (
 
 	createWalletText = "<b>Creating a Wallet</b>\n" +
 		"\n" +
-		"When first connecting a frontend such as btcgui to " +
+		"When first connecting a websocket client such as btcgui to " +
 		"btcwallet, a dialog will open asking for a wallet " +
 		"passphrase.  btcwallet does not support wallets with " +
 		"unencrypted private keys, and will not autogenerate wallets " +

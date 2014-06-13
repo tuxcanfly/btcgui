@@ -307,7 +307,7 @@ func ProcessBtcwalletMessage(b []byte) {
 	// Attempt to parse it as one and handle.
 	var r btcjson.Reply
 	if err := json.Unmarshal(b, &r); err != nil {
-		log.Print("[WRN] Unable to unmarshal btcwallet message as notificatoion or response")
+		log.Print("[WRN] Unable to unmarshal btcwallet message as notification or response")
 		return
 	}
 

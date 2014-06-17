@@ -17,7 +17,6 @@
 package main
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -28,8 +27,10 @@ import (
 	"github.com/conformal/btcws"
 	"github.com/conformal/go-socks"
 	"github.com/conformal/gotk3/glib"
+	"github.com/conformal/websocket"
 	"log"
 	"math"
+	"net/http"
 	"strconv"
 	"sync"
 )
@@ -169,51 +170,38 @@ func ListenAndUpdate(certificates []byte, c chan error) {
 		}
 	})
 
-	// Connect to websocket.
-	url := fmt.Sprintf("wss://%s/ws", cfg.RPCConnect)
-	config, err := websocket.NewConfig(url, "https://localhost/")
-	if err != nil {
-		log.Printf("[ERR] cannot create websocket config: %v", err)
-		c <- ErrConnectionRefused
-		return
-	}
-
 	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM(certificates)
-	config.TlsConfig = &tls.Config{
+	tlsConfig := &tls.Config{
 		RootCAs:    pool,
 		MinVersion: tls.VersionTLS12,
 	}
 
-	// btcwallet requires basic authorization, so we use a custom config
-	// with the Authorization header set.
-	login := cfg.Username + ":" + cfg.Password
-	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(login))
-	config.Header.Add("Authorization", auth)
+	// Create a websocket dialer that will be used to make the connection.
+	// It is modified by the proxy setting below as needed.
+	dialer := websocket.Dialer{TLSClientConfig: tlsConfig}
 
-	// Attempt to connect to running btcwallet instance. Bail if it fails.
-	var ws *websocket.Conn
-	var cerr error
 	if cfg.Proxy != "" {
 		proxy := &socks.Proxy{
 			Addr:     cfg.Proxy,
 			Username: cfg.ProxyUser,
 			Password: cfg.ProxyPass,
 		}
-		conn, err := proxy.Dial("tcp", cfg.RPCConnect)
-		if err != nil {
-			log.Printf("Error connecting to proxy: %v", err)
-			c <- ErrConnectionRefused
-			return
-		}
-
-		tlsConn := tls.Client(conn, config.TlsConfig)
-		ws, cerr = websocket.NewClient(config, tlsConn)
-	} else {
-		ws, cerr = websocket.DialConfig(config)
+		dialer.NetDial = proxy.Dial
 	}
-	if cerr != nil {
-		log.Printf("[ERR] Cannot create websocket client: %v", cerr)
+
+	// btcwallet requires basic authorization, so we use a custom config
+	// with the Authorization header set.
+	login := cfg.Username + ":" + cfg.Password
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(login))
+	requestHeader := make(http.Header)
+	requestHeader.Add("Authorization", auth)
+
+	// Connect to websocket.
+	url := fmt.Sprintf("wss://%s/ws", cfg.RPCConnect)
+	ws, _, err := dialer.Dial(url, requestHeader)
+	if err != nil {
+		log.Printf("[ERR] cannot create websocket config: %v", err)
 		c <- ErrConnectionRefused
 		return
 	}
@@ -225,8 +213,8 @@ func ListenAndUpdate(certificates []byte, c chan error) {
 	go func() {
 		for {
 			// Receive message from wallet
-			var msg []byte
-			err := websocket.Message.Receive(ws, &msg)
+
+			_, msg, err := ws.ReadMessage()
 			if err != nil {
 				close(replies)
 				return
@@ -495,7 +483,7 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, msg); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -530,7 +518,7 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, msg); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -570,7 +558,7 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, msg); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -610,7 +598,7 @@ func cmdGetBalance(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, msg); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -649,7 +637,7 @@ func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, msg); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -688,7 +676,7 @@ func cmdGetBlockCount(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, mcmd); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, mcmd); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -745,7 +733,7 @@ func cmdListAllTransactions(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err = websocket.Message.Send(ws, mcmd); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, mcmd); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -777,7 +765,7 @@ func cmdWalletIsLocked(ws *websocket.Conn) {
 	}
 	replyHandlers.Unlock()
 
-	if err := websocket.Message.Send(ws, msg); err != nil {
+	if err = ws.WriteMessage(websocket.TextMessage, msg); err != nil {
 		replyHandlers.Lock()
 		delete(replyHandlers.m, n)
 		replyHandlers.Unlock()
@@ -802,7 +790,7 @@ func cmdWalletLock(ws *websocket.Conn) error {
 	replyHandlers.m[n] = func(result interface{}, err *btcjson.Error) {}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	return ws.WriteMessage(websocket.TextMessage, msg)
 }
 
 // cmdWalletPassphrase requests wallet to store the encryption
@@ -827,7 +815,7 @@ func cmdWalletPassphrase(ws *websocket.Conn, params *UnlockParams) error {
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	return ws.WriteMessage(websocket.TextMessage, msg)
 }
 
 // cmdSendMany requests wallet to create a new transaction to one or
@@ -862,7 +850,7 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	return ws.WriteMessage(websocket.TextMessage, msg)
 }
 
 // cmdSetTxFee requests wallet to set the global transaction fee added
@@ -887,7 +875,7 @@ func cmdSetTxFee(ws *websocket.Conn, fee float64) error {
 	}
 	replyHandlers.Unlock()
 
-	return websocket.Message.Send(ws, msg)
+	return ws.WriteMessage(websocket.TextMessage, msg)
 }
 
 // strSliceEqual checks if each string in a is equal to each string in b.

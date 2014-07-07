@@ -24,14 +24,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/conformal/btcjson"
+	"github.com/conformal/btcutil"
 	"github.com/conformal/btcws"
 	"github.com/conformal/go-socks"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/websocket"
 	"log"
-	"math"
 	"net/http"
-	"strconv"
 	"sync"
 )
 
@@ -70,26 +69,26 @@ var (
 	// Channels filled from fetchFuncs and read by updateFuncs.
 	updateChans = struct {
 		addrs              chan []string
-		balance            chan float64
+		balance            chan btcutil.Amount
 		btcdConnected      chan bool
 		btcwalletConnected chan bool
 		bcHeight           chan int32
 		bcHeightRemote     chan int32
 		lockState          chan bool
-		unconfirmed        chan float64
+		unconfirmed        chan btcutil.Amount
 		appendTx           chan *TxAttributes
 		prependTx          chan *TxAttributes
 		appendOverviewTx   chan *TxAttributes
 		prependOverviewTx  chan *TxAttributes
 	}{
 		addrs:              make(chan []string),
-		balance:            make(chan float64),
+		balance:            make(chan btcutil.Amount),
 		btcdConnected:      make(chan bool),
 		btcwalletConnected: make(chan bool),
 		bcHeight:           make(chan int32),
 		bcHeightRemote:     make(chan int32),
 		lockState:          make(chan bool),
-		unconfirmed:        make(chan float64),
+		unconfirmed:        make(chan btcutil.Amount),
 		appendTx:           make(chan *TxAttributes),
 		prependTx:          make(chan *TxAttributes),
 		appendOverviewTx:   make(chan *TxAttributes),
@@ -410,10 +409,11 @@ func handleAccountBalanceNtfn(n btcjson.Cmd) {
 	// TODO(jrick): do proper filtering and display all
 	// account balances somewhere
 	if abn.Account == "" {
+		bal, _ := btcutil.NewAmount(abn.Balance)
 		if abn.Confirmed {
-			updateChans.balance <- abn.Balance
+			updateChans.balance <- bal
 		} else {
-			updateChans.unconfirmed <- abn.Balance
+			updateChans.unconfirmed <- bal
 		}
 	}
 
@@ -588,12 +588,12 @@ func cmdGetBalance(ws *websocket.Conn) {
 			return
 		}
 
-		bal, ok := result.(float64)
+		fbal, ok := result.(float64)
 		if !ok {
 			log.Printf("[ERR] getbalance reply is not a number.")
 			return
 		}
-
+		bal, _ := btcutil.NewAmount(fbal)
 		updateChans.balance <- bal
 	}
 	replyHandlers.Unlock()
@@ -627,12 +627,12 @@ func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
 			return
 		}
 
-		bal, ok := result.(float64)
+		fbal, ok := result.(float64)
 		if !ok {
 			log.Printf("[ERR] getunconfirmedbalance reply is not a number.")
 			return
 		}
-
+		bal, _ := btcutil.NewAmount(fbal)
 		updateChans.unconfirmed <- bal
 	}
 	replyHandlers.Unlock()
@@ -968,16 +968,10 @@ func updateBalance() {
 		if !ok {
 			return
 		}
-
-		var s string
-		if math.IsNaN(balance) {
-			s = "unknown"
-		} else {
-			s = strconv.FormatFloat(balance, 'f', 8, 64) + " BTC"
-		}
+		balStr := balance.String()
 		glib.IdleAdd(func() {
-			Overview.Balance.SetMarkup("<b>" + s + "</b>")
-			SendCoins.Balance.SetText("Balance: " + s)
+			Overview.Balance.SetMarkup("<b>" + balStr + "</b>")
+			SendCoins.Balance.SetText("Balance: " + balStr)
 		})
 	}
 }
@@ -990,16 +984,9 @@ func updateUnconfirmed() {
 		if !ok {
 			return
 		}
-
-		var s string
-		if math.IsNaN(unconfirmed) {
-			s = "unknown"
-		} else {
-			balStr := strconv.FormatFloat(unconfirmed, 'f', 8, 64) + " BTC"
-			s = "<b>" + balStr + "</b>"
-		}
+		balStr := "<b>" + unconfirmed.String() + "</b>"
 		glib.IdleAdd(func() {
-			Overview.Unconfirmed.SetMarkup(s)
+			Overview.Unconfirmed.SetMarkup(balStr)
 		})
 	}
 }
@@ -1087,7 +1074,7 @@ func updateTransactions() {
 					[]interface{}{attr.Date.Format(layout),
 						attr.Direction.String(),
 						attr.Address,
-						amountStr(attr.Amount)})
+						attr.Amount.String()})
 			})
 
 		case attr := <-updateChans.appendOverviewTx:
@@ -1121,7 +1108,7 @@ func updateTransactions() {
 					[]interface{}{attr.Date.Format(layout),
 						attr.Direction.String(),
 						attr.Address,
-						amountStr(attr.Amount)})
+						attr.Amount.String()})
 			})
 
 		case attr := <-updateChans.prependOverviewTx:

@@ -143,7 +143,7 @@ func createTxLabel(attr *TxAttributes) (*gtk.Widget, error) {
 	var icon *gtk.Image
 	switch attr.Direction {
 	case Send:
-		amtLabel, err = gtk.LabelNew(amountStr(attr.Amount))
+		amtLabel, err = gtk.LabelNew(attr.Amount.String())
 		if err != nil {
 			return nil, err
 		}
@@ -160,7 +160,7 @@ func createTxLabel(attr *TxAttributes) (*gtk.Widget, error) {
 		}
 
 	case Recv:
-		amtLabel, err = gtk.LabelNew(amountStr(attr.Amount))
+		amtLabel, err = gtk.LabelNew(attr.Amount.String())
 		if err != nil {
 			return nil, err
 		}

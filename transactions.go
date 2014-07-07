@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/conformal/btcjson"
@@ -57,7 +56,7 @@ func (d txDirection) String() string {
 type TxAttributes struct {
 	Direction txDirection
 	Address   string
-	Amount    int64 // measured in satoshis
+	Amount    btcutil.Amount
 	Date      time.Time
 }
 
@@ -74,7 +73,7 @@ func NewTxAttributesFromJSON(r *btcjson.ListTransactionsResult) (*TxAttributes, 
 		return nil, fmt.Errorf("unsupported tx category: %v", r.Category)
 	}
 
-	amount, err := btcjson.JSONToAmount(r.Amount)
+	amount, err := btcutil.NewAmount(r.Amount)
 	if err != nil {
 		return nil, fmt.Errorf("invalid amount: %v", err)
 	}
@@ -116,7 +115,7 @@ func NewTxAttributesFromMap(m map[string]interface{}) (*TxAttributes, error) {
 	if !ok {
 		return nil, errors.New("unspecified amount")
 	}
-	amount, err := btcjson.JSONToAmount(famount)
+	amount, err := btcutil.NewAmount(famount)
 	if !ok {
 		return nil, fmt.Errorf("invalid amount: %v", err)
 	}
@@ -209,9 +208,4 @@ func createTransactions() *gtk.Widget {
 	tv.AppendColumn(col)
 
 	return &sw.Bin.Container.Widget
-}
-
-func amountStr(amount int64) string {
-	fAmount := float64(amount) / float64(btcutil.SatoshiPerBitcoin)
-	return strconv.FormatFloat(fAmount, 'f', 8, 64)
 }

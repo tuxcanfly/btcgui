@@ -4,9 +4,9 @@
 
 VALID_MAJOR=	3
 VALID_MINORS=	6 8 10 12
-GTK_VERSION!=	pkg-config --modversion gtk+-3.0
-GTK_MAJOR!=	echo ${GTK_VERSION} | cut -f 1 -d '.'
-GTK_MINOR!=	echo ${GTK_VERSION} | cut -f 2 -d '.'
+GTK_VERSION=	$(shell pkg-config --modversion gtk+-3.0)
+GTK_MAJOR=	$(shell echo ${GTK_VERSION} | cut -f 1 -d '.')
+GTK_MINOR=	$(shell echo ${GTK_VERSION} | cut -f 2 -d '.')
 GTK_TAG=	gtk_${GTK_MAJOR}_${GTK_MINOR}
 
 all: install

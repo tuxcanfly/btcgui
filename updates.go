@@ -23,15 +23,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"sync"
+
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
 	"github.com/conformal/btcws"
 	"github.com/conformal/go-socks"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/websocket"
-	"log"
-	"net/http"
-	"sync"
 )
 
 const (

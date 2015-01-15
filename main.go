@@ -18,13 +18,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/conformal/go-flags"
-	"github.com/conformal/gotk3/glib"
-	"github.com/conformal/gotk3/gtk"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
+
+	"github.com/conformal/go-flags"
+	"github.com/conformal/gotk3/glib"
+	"github.com/conformal/gotk3/gtk"
 )
 
 // cfg holds the default and overridden configuration settings set

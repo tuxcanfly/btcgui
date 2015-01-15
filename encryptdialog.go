@@ -17,9 +17,10 @@
 package main
 
 import (
+	"log"
+
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
-	"log"
 )
 
 const encryptMessage = "Enter the new passphrase to the wallet.\n" +

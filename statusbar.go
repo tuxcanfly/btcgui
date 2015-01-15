@@ -17,8 +17,9 @@
 package main
 
 import (
-	"github.com/conformal/gotk3/gtk"
 	"log"
+
+	"github.com/conformal/gotk3/gtk"
 )
 
 // StatusElems holds pointers to widgets in the statusbar.

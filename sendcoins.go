@@ -19,11 +19,12 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"log"
+
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcutil"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
-	"log"
 )
 
 type recipient struct {

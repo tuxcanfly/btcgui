@@ -17,9 +17,10 @@
 package main
 
 import (
+	"log"
+
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
-	"log"
 )
 
 // NewWalletParams holds the parameters needed to create a new wallet.

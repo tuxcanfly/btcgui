@@ -18,13 +18,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/conformal/btcutil"
-	"github.com/conformal/go-flags"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/conformal/btcutil"
+	"github.com/conformal/go-flags"
 )
 
 const (

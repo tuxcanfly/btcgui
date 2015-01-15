@@ -17,10 +17,11 @@
 package main
 
 import (
+	"log"
+
 	"github.com/conformal/gotk3/gdk"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
-	"log"
 )
 
 var addrBookWidgets struct {

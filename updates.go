@@ -27,8 +27,8 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/conformal/btcjson"
-	"github.com/conformal/btcutil"
 	"github.com/conformal/btcws"
 	"github.com/conformal/go-socks"
 	"github.com/conformal/gotk3/glib"

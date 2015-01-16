@@ -28,10 +28,10 @@ import (
 	"sync"
 
 	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/go-socks/socks"
 	"github.com/btcsuite/websocket"
 	"github.com/conformal/btcjson"
 	"github.com/conformal/btcws"
-	"github.com/btcsuite/go-socks/socks"
 	"github.com/conformal/gotk3/glib"
 )
 

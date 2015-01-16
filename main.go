@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/conformal/go-flags"
+	"github.com/btcsuite/go-flags"
 	"github.com/conformal/gotk3/glib"
 	"github.com/conformal/gotk3/gtk"
 )

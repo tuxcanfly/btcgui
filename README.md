@@ -7,7 +7,7 @@ btcgui
 btcgui is a graphical client for btcwallet and btcd written using gotk3.
 
 Full btcwallet installation instructions can be found
-[here](https://github.com/conformal/btcwallet).
+[here](https://github.com/btcsuite/btcwallet).
 
 This project is currently under active development is not production
 ready yet.  Because of this, support for connecting to a mainnet
@@ -33,7 +33,7 @@ https://opensource.conformal.com/packages/windows/btcdsuite/
 - Run the following commands to install btcwallet and btcd:
 ```bash
 $ go get -u -v github.com/conformal/btcd/...
-$ go get -u -v github.com/conformal/btcwallet/...
+$ go get -u -v github.com/btcsuite/btcwallet/...
 ```
 
 - Run the following command to install btcgui, using the correct GoTK3
@@ -68,7 +68,7 @@ https://opensource.conformal.com/packages/windows/btcdsuite/
 - Run the following commands to update btcgui, all dependencies, and install it:
 ```bash
 $ go get -u -v github.com/conformal/btcd/...
-$ go get -u -v github.com/conformal/btcwallet/...
+$ go get -u -v github.com/btcsuite/btcwallet/...
 $ go get [-tags gtk_#_#] -u -v github.com/btcsuite/btcgui/...
 ```
   Alternatively, running ```make update``` from the btcgui directory will

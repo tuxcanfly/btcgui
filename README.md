@@ -1,8 +1,8 @@
 btcgui
 ======
 
-[![Build Status](https://travis-ci.org/conformal/btcgui.png?branch=master)]
-(https://travis-ci.org/conformal/btcgui)
+[![Build Status](https://travis-ci.org/btcsuite/btcgui.png?branch=master)]
+(https://travis-ci.org/btcsuite/btcgui)
 
 btcgui is a graphical client for btcwallet and btcd written using gotk3.
 
@@ -39,14 +39,14 @@ $ go get -u -v github.com/conformal/btcwallet/...
 - Run the following command to install btcgui, using the correct GoTK3
   build tag if you are not running the latest supported GTK:
 ```bash
-$ go get [-tags gtk_#_#] -u -v github.com/conformal/btcgui/...
+$ go get [-tags gtk_#_#] -u -v github.com/btcsuite/btcgui/...
 ```
   Alternatively, a Makefile is provided which will determine and use the
   correct GTK build tag.  You will have to clone the repo manually first,
   though.
 ```bash
 $ cd $GOPATH/src/github.com/conformal/
-$ git clone https://github.com/conformal/btcgui.git
+$ git clone https://github.com/btcsuite/btcgui.git
 $ cd btcgui
 $ make
 ```
@@ -69,7 +69,7 @@ https://opensource.conformal.com/packages/windows/btcdsuite/
 ```bash
 $ go get -u -v github.com/conformal/btcd/...
 $ go get -u -v github.com/conformal/btcwallet/...
-$ go get [-tags gtk_#_#] -u -v github.com/conformal/btcgui/...
+$ go get [-tags gtk_#_#] -u -v github.com/btcsuite/btcgui/...
 ```
   Alternatively, running ```make update``` from the btcgui directory will
   determine the correct GTK build tag for your system and call ```go get```

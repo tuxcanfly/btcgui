@@ -31,7 +31,7 @@ type params struct {
 }
 
 // mainNetParams contains parameters specific to running btcgui and
-// btcwallet on the main network (btcwire.MainNet).
+// btcwallet on the main network (wire.MainNet).
 var mainNetParams = params{
 	Params:  &btcnet.MainNetParams,
 	connect: "localhost:8332",
@@ -39,7 +39,7 @@ var mainNetParams = params{
 }
 
 // testNet3Params contains parameters specific to running btcgui and
-// btcwallet on the test network (version 3) (btcwire.TestNet3).
+// btcwallet on the test network (version 3) (wire.TestNet3).
 var testNet3Params = params{
 	Params:  &btcnet.TestNet3Params,
 	connect: "localhost:18332",
@@ -47,7 +47,7 @@ var testNet3Params = params{
 }
 
 // simNetParams contains parameters specific to running btcgui and
-// btcwallet on the simulation test network (btcwire.SimNet).
+// btcwallet on the simulation test network (wire.SimNet).
 var simNetParams = params{
 	Params:  &btcnet.SimNetParams,
 	connect: "localhost:18554",

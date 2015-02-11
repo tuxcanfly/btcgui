@@ -41,6 +41,11 @@ $ go get -u -v github.com/btcsuite/btcwallet/...
 ```bash
 $ go get [-tags gtk_#_#] -u -v github.com/btcsuite/btcgui/...
 ```
+- For example, Ubuntu 14.04 uses GTK 3.10, so the command would be as follows.
+```bash
+$ go get -tags gtk_3_10 -u -v github.com/btcsuite/btcgui/...
+```
+
   Alternatively, a Makefile is provided which will determine and use the
   correct GTK build tag.  You will have to clone the repo manually first,
   though.

@@ -449,7 +449,7 @@ func cmdGetNewAddress(ws *websocket.Conn) {
 	}()
 
 	n := <-NewJSONID
-	msg, err := btcjson.CreateMessageWithId("getnewaddress", n, "")
+	msg, err := btcjson.CreateMessageWithId("getnewaddress", n, cfg.Account)
 	if err != nil {
 		triggerReplies.newAddr <- err
 		return
@@ -533,7 +533,7 @@ func cmdCreateEncryptedWallet(ws *websocket.Conn, params *NewWalletParams) {
 // TODO(jrick): stop throwing away errors.
 func cmdGetAddressesByAccount(ws *websocket.Conn) {
 	n := <-NewJSONID
-	msg, err := btcjson.CreateMessageWithId("getaddressesbyaccount", n, "")
+	msg, err := btcjson.CreateMessageWithId("getaddressesbyaccount", n, cfg.Account)
 	if err != nil {
 		updateChans.addrs <- []string{}
 	}
@@ -571,7 +571,7 @@ func cmdGetAddressesByAccount(ws *websocket.Conn) {
 // one confirmation).
 func cmdGetBalance(ws *websocket.Conn) {
 	n := <-NewJSONID
-	cmd, err := btcjson.NewGetBalanceCmd(n)
+	cmd, err := btcjson.NewGetBalanceCmd(n, cfg.Account)
 	if err != nil {
 		log.Printf("[ERR] cannot create getbalance command.")
 		return
@@ -610,7 +610,7 @@ func cmdGetBalance(ws *websocket.Conn) {
 // cmdGetUnconfirmedBalance requests the current unconfirmed balance.
 func cmdGetUnconfirmedBalance(ws *websocket.Conn) {
 	n := <-NewJSONID
-	cmd, err := btcws.NewGetUnconfirmedBalanceCmd(n)
+	cmd, err := btcws.NewGetUnconfirmedBalanceCmd(n, cfg.Account)
 	if err != nil {
 		log.Printf("[ERR] cannot create getunconfirmedbalance command.")
 		return
@@ -689,7 +689,7 @@ func cmdGetBlockCount(ws *websocket.Conn) {
 // TODO(jrick): support non-default accounts.
 func cmdListAllTransactions(ws *websocket.Conn) {
 	n := <-NewJSONID
-	cmd, err := btcws.NewListAllTransactionsCmd(n, "")
+	cmd, err := btcws.NewListAllTransactionsCmd(n, cfg.Account)
 	if err != nil {
 		log.Printf("[ERR] cannot create listalltransactions command.")
 		return
@@ -830,7 +830,7 @@ func cmdSendMany(ws *websocket.Conn, pairs map[string]float64) error {
 		Id:      n,
 		Method:  "sendmany",
 		Params: []interface{}{
-			"",
+			cfg.Account,
 			pairs,
 		},
 	}

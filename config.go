@@ -55,6 +55,7 @@ type config struct {
 	Proxy       string `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
 	ProxyUser   string `long:"proxyuser" description:"Username for proxy server"`
 	ProxyPass   string `long:"proxypass" default-mask:"-" description:"Password for proxy server"`
+	Account     string `short:"a" long:"account" description:"Account to use (default \"\")"`
 }
 
 // cleanAndExpandPath expands environement variables and leading ~ in the

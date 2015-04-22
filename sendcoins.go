@@ -262,7 +262,7 @@ func createSendCoins() *gtk.Widget {
 	submitBtn.SetSizeRequest(150, -1)
 	submitBtn.SetHAlign(gtk.ALIGN_END)
 	submitBtn.SetHExpand(true)
-	submitBtn.SetSensitive(false)
+	submitBtn.SetSensitive(true)
 	submitBtn.Connect("clicked", func() {
 		sendTo := make(map[string]float64)
 		for e := recipients.Front(); e != nil; e = e.Next() {
